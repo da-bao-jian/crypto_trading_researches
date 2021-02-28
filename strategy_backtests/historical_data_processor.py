@@ -93,7 +93,7 @@ class DeribitDataProcessor:
                 "resolution": self.time_interval
             }
         }
-        print(self.msg)
+        # print(self.msg)
 
     async def call_api(self, msg):
         async with websockets.connect('wss://test.deribit.com/ws/api/v2') as websocket:
@@ -115,11 +115,13 @@ class DeribitDataProcessor:
         df = pd.DataFrame(jsoned_response['result'])
         df['ticks'] = df.ticks/1000
         df['timestamp'] = [dt.fromtimestamp(time) for time in df.ticks]
-
         return df
 
+    def deribit_historical_data_recorder(self, name_of_csv):
+        df = self.to_pandas_df(self.retrieve_data())
+        return df.to_csv(name_of_csv, encoding='utf-8', index=False)
 
 if __name__ == '__main__':
     res = DeribitDataProcessor('2021', '02', '26', time_interval='1D')
     df = res.to_pandas_df(res.retrieve_data())
-    print(df.head())
+    print(df)
