@@ -120,7 +120,7 @@ class DeribitDataProcessor:
         df = self.to_pandas_df(self.retrieve_data())
         return df.to_csv(name_of_csv, encoding='utf-8', index=False)
     
-    def REST_polling(self, write_file = False):
+    def REST_polling(self, write_file = False, name_of_csv='new_data'):
 
         day_span = (dt.now()-dt.fromtimestamp(self.start)).days
         df = pd.DataFrame()
@@ -153,9 +153,9 @@ class DeribitDataProcessor:
             print(f'showing data of {new_day}')
             print(pandaed)
             time.sleep(0.1)
-            
+
         if write_file:  
-            return df.to_csv()
+            return df.to_csv(name_of_csv)
         else:
             return df
 
