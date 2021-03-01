@@ -10,6 +10,7 @@ import time
 from datetime import datetime as dt
 import datetime
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Binance OHCL data
 class BinanceDataProcessor:
@@ -161,7 +162,8 @@ class DeribitDataProcessor:
 
 
 if __name__ == '__main__':
-    deribit = DeribitDataProcessor('2021', '02', '26', time_interval='30')
+    deribit = DeribitDataProcessor('2020', '09', '26', time_interval='30')
     # df = res.to_pandas_df(res.retrieve_data())
-    complete_data = deribit.REST_polling()
-    print(complete_data)
+    # complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
+    dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
+    plt.plot(dataframe.timestamp, dataframe.close)
