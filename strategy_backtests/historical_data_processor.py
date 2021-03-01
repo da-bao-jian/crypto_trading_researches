@@ -1,4 +1,3 @@
-
 import json
 import websockets
 import asyncio
@@ -9,11 +8,10 @@ import os
 import sys
 import time
 from datetime import datetime as dt
+import datetime
 import pandas as pd
 
 # Binance OHCL data
-
-
 class BinanceDataProcessor:
 
     def __init__(self, key, secret):
@@ -66,6 +64,7 @@ class BinanceDataProcessor:
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
+
     def __init__(self, start_year, start_month, start_day, end_year=None, end_month=None, end_day=None, symbol="BTC-PERPETUAL", time_interval='1'):
 
         str_start_time = f'{start_day}/{start_month}/{start_year}'
@@ -108,7 +107,7 @@ class DeribitDataProcessor:
 
     def retrieve_data(self):
         response = self.api_loop(self.call_api, json.dumps(self.msg))
-        return response   # raw form
+        return response   # raw form, needs json.loads() later
 
     def to_pandas_df(self, response):
         jsoned_response = json.loads(response)
@@ -120,8 +119,49 @@ class DeribitDataProcessor:
     def deribit_historical_data_recorder(self, name_of_csv):
         df = self.to_pandas_df(self.retrieve_data())
         return df.to_csv(name_of_csv, encoding='utf-8', index=False)
+    
+    def REST_polling(self, write_file = False):
+
+        day_span = (dt.now()-dt.fromtimestamp(self.start)).days
+        df = pd.DataFrame()
+        new_day = dt.fromtimestamp(self.start)
+
+        for d in range(day_span): 
+
+            unix_past_day = dt.timestamp(new_day)
+            new_day += datetime.timedelta(days=1)
+            unix_future_day = dt.timestamp(new_day)
+
+            new_request = {
+                "jsonrpc": "2.0",
+                "id": 833,
+                "method": "public/get_tradingview_chart_data",
+                "params": {
+                    "instrument_name": self.symbol,
+                    "start_timestamp": unix_past_day*1000,
+                    "end_timestamp": unix_future_day*1000,
+                    "resolution": self.time_interval
+                }
+            }
+
+            response = self.api_loop(self.call_api, json.dumps(new_request))
+            pandaed = self.to_pandas_df(response)
+            pandaed.drop(pandaed.tail(1).index,
+                    inplace=True)
+            df = df.append(pandaed, ignore_index=True)
+
+            print(f'showing data of {new_day}')
+            print(pandaed)
+            time.sleep(0.1)
+            
+        if write_file:  
+            return df.to_csv()
+        else:
+            return df
+
 
 if __name__ == '__main__':
-    res = DeribitDataProcessor('2021', '02', '26', time_interval='1D')
-    df = res.to_pandas_df(res.retrieve_data())
-    print(df)
+    deribit = DeribitDataProcessor('2021', '02', '26', time_interval='30')
+    # df = res.to_pandas_df(res.retrieve_data())
+    complete_data = deribit.REST_polling()
+    print(complete_data)
