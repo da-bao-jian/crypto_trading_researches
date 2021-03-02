@@ -67,7 +67,7 @@ class BinanceDataProcessor:
 class DeribitDataProcessor:
 
     def __init__(self, start_year, start_month, start_day, end_year=None, end_month=None, end_day=None, symbol="BTC-PERPETUAL", time_interval='1'):
-
+        
         str_start_time = f'{start_day}/{start_month}/{start_year}'
         self.start = dt.timestamp(
             dt.strptime(str_start_time, "%d/%m/%Y"))
@@ -121,6 +121,14 @@ class DeribitDataProcessor:
         df = self.to_pandas_df(self.retrieve_data())
         return df.to_csv(name_of_csv, encoding='utf-8', index=False)
     
+    def df_column_orgnizer(self, df):
+        needed_columns = ['volume', 'open',
+                          'low', 'high', 'close', 'timestamp']
+        for col in df.columns:
+            if col not in needed_columns:
+                del df[col]
+        return df
+    
     def REST_polling(self, write_file = False, name_of_csv='new_data'):
 
         day_span = (dt.now()-dt.fromtimestamp(self.start)).days
@@ -149,11 +157,14 @@ class DeribitDataProcessor:
             pandaed = self.to_pandas_df(response)
             pandaed.drop(pandaed.tail(1).index,
                     inplace=True)
+
+            pandaed = self.df_column_orgnizer(pandaed)
             df = df.append(pandaed, ignore_index=True)
 
             print(f'showing data of {new_day}')
             print(pandaed)
-            time.sleep(0.1)
+            time.sleep(0.05)
+
 
         if write_file:  
             return df.to_csv(name_of_csv)
@@ -162,8 +173,9 @@ class DeribitDataProcessor:
 
 
 if __name__ == '__main__':
+
     deribit = DeribitDataProcessor('2020', '09', '26', time_interval='30')
     # df = res.to_pandas_df(res.retrieve_data())
-    # complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
-    dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
-    plt.plot(dataframe.timestamp, dataframe.close)
+    complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
+    # dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
+    # plt.plot(dataframe.timestamp, dataframe.close)
