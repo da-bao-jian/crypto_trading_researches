@@ -66,7 +66,8 @@ class BinanceDataProcessor:
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
 
-    def __init__(self, start_year, start_month, start_day, end_year=None, end_month=None, end_day=None, symbol="BTC-PERPETUAL", time_interval='1'):
+    def __init__(self, start_year, start_month, start_day, end_year=None, end_month=None, end_day=None, 
+                symbol="BTC-PERPETUAL", time_interval='60'):
         
         str_start_time = f'{start_day}/{start_month}/{start_year}'
         self.start = dt.timestamp(
@@ -164,7 +165,7 @@ class DeribitDataProcessor:
             df = df.append(pandaed, ignore_index=True)
 
             # print(f'showing data of {new_day}')
-            print(pandaed)
+            # print(pandaed)
             time.sleep(0.05)
 
         if write_file:  

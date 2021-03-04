@@ -8,7 +8,7 @@ from datetime import datetime as dt
 class Backtester: 
 
     def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier):
-        self.exchange = Exchange.new(start_year, start_month, start_day)
+        self.exchange = Exchange(start_year, start_month, start_day)
         self.df = self.exchange.REST_polling()
         
         self.holding_period = holding_period
@@ -27,7 +27,7 @@ class Backtester:
 
     def trade(self, price, long=False, short=False): 
         if long or short: 
-            self.entry_price = price
+            self.entry_price = price # assuming that using the closing price can be filled here
             if long: 
                 self.open_positions = True
                 self.direction = 1 
@@ -53,7 +53,7 @@ class Backtester:
         self.entry_price = None
 
     def close_trade(self, price):
-        pnl = self.direction =*(price-self.entry_price-1)
+        pnl = self.direction * (price-self.entry_price-1)
         self.returns.append(pnl)
         self.reset()
     
@@ -64,9 +64,11 @@ class Backtester:
             self.close_trade(price)
         elif price <= self.take_profits and self.direction == -1:
             self.close_trade(price)
-        elif self >= self.stop_loss and self.direction == -1: 
+        elif price >= self.stop_loss and self.direction == -1: 
             self.close_trade(price)
         elif time == self.end:
+            self.close_trade(price)
+        elif self.holding_period <= 0:
             self.close_trade(price)
         else:
             self.holding_period = self.holding_period - 1
@@ -78,12 +80,12 @@ class Backtester:
     
     def run_backtester(self):
         self.generate_signal()
-        for row in self.df.intertuples():
-            if row.entry == 1 and row.open_positions == False:
+        for row in self.df.itertuples():
+            if row.entry == 1 and self.open_positions == False:
                 self.trade(row.close, long=True)
-            elif row.entry == -1 and row.open_positions == False: 
+            elif row.entry == -1 and self.open_positions == False: 
                 self.trade(row.close, short=True)
             elif self.open_positions: 
                 self.price_control(row.close, row.timestamp)
             else:
-                return self.returns.append(0)
+                self.returns.append(0)
