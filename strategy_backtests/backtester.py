@@ -7,8 +7,9 @@ from datetime import datetime as dt
 
 class Backtester: 
 
-    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier):
-        self.exchange = Exchange(start_year, start_month, start_day)
+    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier, time_interval):
+        self.exchange = Exchange(
+            start_year, start_month, start_day, time_interval = time_interval)
         self.df = self.exchange.REST_polling()
         
         self.holding_period = holding_period
@@ -78,13 +79,19 @@ class Backtester:
         if 'entry' not in self.df.columns:
             raise Exception('No trade entered')
     
-    def run_backtester(self):
+    def run_backtester(self, using_close_price=True):
         self.generate_signal()
         for row in self.df.itertuples():
             if row.entry == 1 and self.open_positions == False:
-                self.trade(row.next_open, long=True)
+                if using_close_price:
+                    self.trade(row.close, long=True)
+                else:
+                    self.trade(row.next_open, long=True)
             elif row.entry == -1 and self.open_positions == False: 
-                self.trade(row.next_open, short=True)
+                if using_close_price:
+                    self.trade(row.close, short=True)
+                else:
+                    self.trade(row.next_open, short=True)
             elif self.open_positions: 
                 self.price_control(row.close, row.timestamp)
             else:

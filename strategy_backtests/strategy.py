@@ -22,10 +22,11 @@ class Strategy(ABC):
 
 class MAStrategy(Strategy, Backtester): 
     '''
-    test Strategy, don't use it
+    sample strategy, don't use it
     '''
     def __init__(self, Exchange, start_year, start_month,
-                 start_day, holding_period, up_multiplier, down_multiplier, lookback_period1, lookback_period2):
+                 start_day, holding_period, up_multiplier, down_multiplier, 
+                 lookback_period1, lookback_period2):
         Backtester.__init__(self, Exchange, start_year, start_month,
                             start_day, holding_period, up_multiplier, down_multiplier)
         self.lookback_period1 = lookback_period1
@@ -50,7 +51,36 @@ class MAStrategy(Strategy, Backtester):
         plt.plot(all_returns)
         plt.show()
 
+class HigherHighLowerLow(Strategy, Backtester):
+    '''
+    simple high low strategy for testing
+    '''
+    def __init__(self, Exchange, start_year, start_month,
+                 start_day, holding_period, up_multiplier, down_multiplier, time_interval='60'):
+        Backtester.__init__(self, Exchange, start_year, start_month,
+                            start_day, holding_period, up_multiplier, down_multiplier, time_interval)
+
+    def generate_signal(self):
+        df = self.df
+        df['long'] = ((df.close.shift(2) > df.high.shift(3)) & (
+            df.high > df.high.shift(1)) & (df.high.shift(1) > df.high.shift(2))) * 1
+        df['short'] = ((df.close.shift(2) > df.low.shift(3)) & (
+            df.low > df.low.shift(1)) & (df.low.shift(1) > df.low.shift(2))) * -1
+        df['entry'] = df['short'] + df['long']
+        df.dropna(inplace=True)
+
+
+    def plot_performance(self):
+        results = np.array(self.returns)
+        all_returns = results.cumsum()
+        plt.plot(all_returns)
+        plt.show()
+
 if __name__ == '__main__': 
-    ma = MAStrategy(Deribit, '2021', '02', '26', holding_period=20, up_multiplier=1.06, down_multiplier=0.97, lookback_period1=7, lookback_period2=10)
-    ma.run_backtester()
-    ma.plot_performance()
+    # ma = MAStrategy(Deribit, '2021', '02', '26', holding_period=20, up_multiplier=1.06, down_multiplier=0.97, lookback_period1=7, lookback_period2=10)
+    # ma.run_backtester()
+    # ma.plot_performance()
+    hh = HigherHighLowerLow(Deribit, '2021', '02', '26', holding_period=20,
+                            up_multiplier=1.06, down_multiplier=0.97, time_interval='30')
+    hh.run_backtester()
+    hh.plot_performance()
