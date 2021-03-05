@@ -82,9 +82,9 @@ class Backtester:
         self.generate_signal()
         for row in self.df.itertuples():
             if row.entry == 1 and self.open_positions == False:
-                self.trade(row.close, long=True)
+                self.trade(row.next_open, long=True)
             elif row.entry == -1 and self.open_positions == False: 
-                self.trade(row.close, short=True)
+                self.trade(row.next_open, short=True)
             elif self.open_positions: 
                 self.price_control(row.close, row.timestamp)
             else:

@@ -124,7 +124,7 @@ class DeribitDataProcessor:
     
     def df_column_orgnizer(self, df):
         needed_columns = ['volume', 'open',
-                          'low', 'high', 'close', 'timestamp']
+                          'low', 'high', 'close', 'timestamp', 'next_open']
         for col in df.columns:
             if col not in needed_columns:
                 del df[col]
@@ -156,6 +156,7 @@ class DeribitDataProcessor:
 
             response = self.api_loop(self.call_api, json.dumps(new_request))
             pandaed = self.to_pandas_df(response)
+            pandaed['next_open'] = pandaed.open.shift(-1)
             pandaed.drop(pandaed.tail(1).index,
                     inplace=True)
             
@@ -174,10 +175,11 @@ class DeribitDataProcessor:
             return df
 
 
+
 if __name__ == '__main__':
 
-    deribit = DeribitDataProcessor('2020', '09', '26', time_interval='30')
+    deribit = DeribitDataProcessor('2021', '02', '26', time_interval='30')
     # df = res.to_pandas_df(res.retrieve_data())
-    # complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
+    complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
     # dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
     # plt.plot(dataframe.timestamp, dataframe.close)
