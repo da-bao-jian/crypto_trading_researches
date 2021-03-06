@@ -17,7 +17,7 @@ class Strategy(ABC):
 
 class MAStrategy(Strategy, Backtester): 
     '''
-    sample strategy, don't use it
+    sample MA strategy for testing
     '''
     def __init__(self, Exchange, start_year, start_month,
                  start_day, holding_period, up_multiplier, down_multiplier, 
@@ -34,8 +34,8 @@ class MAStrategy(Strategy, Backtester):
         df['ma_deficit'] = df['short_period_ma'] - df['long_period_ma']
         
         
-        df['long'] = ((df.ma_deficit > 50) & (df.ma_deficit.shift(1) < 0)) * 1
-        df['short'] = ((df.ma_deficit < -50) & (df.ma_deficit.shift(1) > 0)) * -1
+        df['long'] = ((df.ma_deficit > 30) & (df.ma_deficit.shift(1) < 0)) * 1
+        df['short'] = ((df.ma_deficit < -30) & (df.ma_deficit.shift(1) > 0)) * -1
 
         df['entry'] = df['long'] + df['short']
 
@@ -74,26 +74,60 @@ class HigherHighLowerLow(Strategy, Backtester):
         self.df = df
 
 
-class RSI(Strategy, Backtester):
+class MomentumRSI(Strategy, Backtester):
     '''
-    simple momentum RSI strategy for testing
+     momentum RSI strategy for testing
     '''
     def __init__(self, Exchange, start_year, start_month,
-                 start_day, holding_period, up_multiplier, down_multiplier, time_interval='60'):
+                 start_day, holding_period, up_multiplier, down_multiplier, RSI_lookback_period, time_interval='60', RSI_short=30, RSI_long=80, MA_long_period=200, MA_short_period=50):
         Backtester.__init__(self, Exchange, start_year, start_month,
                             start_day, holding_period, up_multiplier, down_multiplier, time_interval)
 
-    # def generate_signal(self):
+        self.RSI_lookback_period = RSI_lookback_period
+        self.RSI_long = RSI_long
+        self.RSI_short = RSI_short
+
+        self.MA_short_period = MA_short_period
+        self.MA_long_period = MA_long_period
+    
+    def calc_RSI(self):
+        df = self.df
+        df['change'] = df.close - df.close.shift(1)
+        df['up'] = [x if x > 0 else 0 for x in df.change]
+        df['down'] = [abs(x) if x < 0 else 0 for x in df.change]
+        up_ewma = df['up'].ewm(span=self.RSI_lookback_period,
+                                min_periods=self.RSI_lookback_period-1).mean()
+        down_ewma = df['down'].ewm(span=self.RSI_lookback_period,
+                                    min_periods=self.RSI_lookback_period-1).mean()
+        df['relative_strength'] = up_ewma / down_ewma                                                              
+        df['RSI'] = 100 - (100 / (1+df.relative_strength))
         
+        df.drop(['change', 'up', 'down', 'relative_strength'], axis = 1, inplace=True)
+        df = self.df
+
+    def calc_MA(self): 
+        df = self.df 
+        df['ma_long'] = df.close.ewm(
+            span=self.MA_long_period, min_periods=self.MA_long_period-1).mean()
+        df['ma_short'] = df.close.ewm(
+            span=self.MA_short_period, min_periods=self.MA_short_period-1).mean()
+        self.df = df 
+
+    def generate_signal(self):
+        df = self.df
+        self.calc_RSI()
+        self.calc_MA()
+        df['long'] = ((df.RSI < self.RSI_long) & (abs(df.ma_short - df.ma_long) > 35) & (df.ma_short > df.ma_long)) * 1
+        df['short'] = ((df.RSI > self.RSI_short) & (abs(df.ma_short - df.ma_long) > 35) & (df.ma_short < df.ma_long)) * -1
+        df['entry'] = df['short'] + df['long']
+        df.dropna(inplace=True)
+        self.df = df
 
 if __name__ == '__main__': 
-    ma = MAStrategy(Deribit, '2021', '01', '26', holding_period=24, up_multiplier=1.05,
-                    down_multiplier=0.95, lookback_period1=7, lookback_period2=10)
+    ma = MomentumRSI(Deribit, '2021', '01', '26', holding_period=18, up_multiplier=1.05,
+                    down_multiplier=0.95, RSI_lookback_period=14)
     ma.run_backtester()
     # hh = HigherHighLowerLow(Deribit, '2021', '01', '26', holding_period=20,
     #                         up_multiplier=1.01, down_multiplier=0.99, time_interval='30')
-    # hh.run_backtester()
-    # hh.plot_performance()
-    # breakpoint()
     # hh.df['returns'] = hh.returns
     # hh.df.to_csv('high_low_strategy')

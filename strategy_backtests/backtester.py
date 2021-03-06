@@ -7,7 +7,7 @@ from datetime import datetime as dt
 
 class Backtester: 
 
-    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier, time_interval='120'):
+    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier, time_interval='60'):
         self.exchange = Exchange(
             start_year, start_month, start_day, time_interval = time_interval)
         self.df = self.exchange.REST_polling()
