@@ -14,11 +14,6 @@ class Strategy(ABC):
         raise NotImplementedError(
             'should be implementing generate_signal() from subclass')
     
-    @abstractmethod
-    def plot_performance():
-        raise NotImplementedError(
-            'should be implementing plot_performance() from subclass')
-
 
 class MAStrategy(Strategy, Backtester): 
     '''
@@ -39,17 +34,17 @@ class MAStrategy(Strategy, Backtester):
         df['ma_deficit'] = df['short_period_ma'] - df['long_period_ma']
         
         
-        df['long'] = ((df.ma_deficit > 0) & (df.ma_deficit.shift(1) < 0)) * 1
-        df['short'] = ((df.ma_deficit < 0) & (df.ma_deficit.shift(1) > 0)) * -1
-        
+        df['long'] = ((df.ma_deficit > 50) & (df.ma_deficit.shift(1) < 0)) * 1
+        df['short'] = ((df.ma_deficit < -50) & (df.ma_deficit.shift(1) > 0)) * -1
+
         df['entry'] = df['long'] + df['short']
+
+        df['number_of_long_signals'] = df.entry.gt(0).cumsum()
+        df['number_of_short_signals'] = df.entry.lt(0).cumsum()
+        df['total_number_of_signals'] = df.entry.ne(0).cumsum()
+
         self.df = df
             
-    def plot_performance(self):
-        results = np.array(self.returns)  
-        all_returns = results.cumsum()
-        plt.plot(all_returns)
-        plt.show()
 
 class HigherHighLowerLow(Strategy, Backtester):
     '''
@@ -62,25 +57,43 @@ class HigherHighLowerLow(Strategy, Backtester):
 
     def generate_signal(self):
         df = self.df
+
         df['long'] = ((df.close.shift(2) > df.high.shift(3)) & (
             df.high > df.high.shift(1)) & (df.high.shift(1) > df.high.shift(2))) * 1
+        
         df['short'] = ((df.close.shift(2) > df.low.shift(3)) & (
             df.low > df.low.shift(1)) & (df.low.shift(1) > df.low.shift(2))) * -1
         df['entry'] = df['short'] + df['long']
+        
+        df['number_of_long_signals'] = df.entry.gt(0).cumsum()
+        df['number_of_short_signals'] = df.entry.lt(0).cumsum()
+        df['total_number_of_signals'] = df.entry.ne(0).cumsum()
+
         df.dropna(inplace=True)
 
+        self.df = df
 
-    def plot_performance(self):
-        results = np.array(self.returns)
-        all_returns = results.cumsum()
-        plt.plot(all_returns)
-        plt.show()
+
+class RSI(Strategy, Backtester):
+    '''
+    simple momentum RSI strategy for testing
+    '''
+    def __init__(self, Exchange, start_year, start_month,
+                 start_day, holding_period, up_multiplier, down_multiplier, time_interval='60'):
+        Backtester.__init__(self, Exchange, start_year, start_month,
+                            start_day, holding_period, up_multiplier, down_multiplier, time_interval)
+
+    # def generate_signal(self):
+        
 
 if __name__ == '__main__': 
-    # ma = MAStrategy(Deribit, '2021', '02', '26', holding_period=20, up_multiplier=1.06, down_multiplier=0.97, lookback_period1=7, lookback_period2=10)
-    # ma.run_backtester()
-    # ma.plot_performance()
-    hh = HigherHighLowerLow(Deribit, '2021', '02', '26', holding_period=20,
-                            up_multiplier=1.06, down_multiplier=0.97, time_interval='30')
-    hh.run_backtester()
-    hh.plot_performance()
+    ma = MAStrategy(Deribit, '2021', '01', '26', holding_period=24, up_multiplier=1.05,
+                    down_multiplier=0.95, lookback_period1=7, lookback_period2=10)
+    ma.run_backtester()
+    # hh = HigherHighLowerLow(Deribit, '2021', '01', '26', holding_period=20,
+    #                         up_multiplier=1.01, down_multiplier=0.99, time_interval='30')
+    # hh.run_backtester()
+    # hh.plot_performance()
+    # breakpoint()
+    # hh.df['returns'] = hh.returns
+    # hh.df.to_csv('high_low_strategy')

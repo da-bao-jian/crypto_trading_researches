@@ -167,7 +167,7 @@ class DeribitDataProcessor:
 
             # print(f'showing data of {new_day}')
             # print(pandaed)
-            time.sleep(0.05)
+            time.sleep(0.01)
 
         if write_file:  
             return df.to_csv(name_of_csv)

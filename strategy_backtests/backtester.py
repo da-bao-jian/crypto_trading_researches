@@ -7,12 +7,14 @@ from datetime import datetime as dt
 
 class Backtester: 
 
-    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier, time_interval):
+    def __init__(self, Exchange, start_year, start_month, start_day, holding_period, up_multiplier, down_multiplier, time_interval='120'):
         self.exchange = Exchange(
             start_year, start_month, start_day, time_interval = time_interval)
         self.df = self.exchange.REST_polling()
         
         self.holding_period = holding_period
+        self.constant_holding = holding_period
+
         self.end = self.df.timestamp.values[-1]
 
         self.open_positions = False 
@@ -52,9 +54,10 @@ class Backtester:
         self.stop_loss = None
         self.direction = None  # long =1 short = -1
         self.entry_price = None
+        self.holding_period = self.constant_holding
 
     def close_trade(self, price):
-        pnl = self.direction * (price-self.entry_price-1)
+        pnl = self.direction * (price/self.entry_price-1)
         self.returns.append(pnl)
         self.reset()
     
@@ -79,6 +82,13 @@ class Backtester:
         if 'entry' not in self.df.columns:
             raise Exception('No trade entered')
     
+    def plot_performance(self):
+        results = np.array(self.returns)
+        all_returns = results.cumsum()
+        time = np.array(self.df.timestamp)
+        plt.plot(time, all_returns)
+        plt.show()
+
     def run_backtester(self, using_close_price=True):
         self.generate_signal()
         for row in self.df.itertuples():
@@ -96,3 +106,6 @@ class Backtester:
                 self.price_control(row.close, row.timestamp)
             else:
                 self.returns.append(0)
+        self.plot_performance()
+
+
