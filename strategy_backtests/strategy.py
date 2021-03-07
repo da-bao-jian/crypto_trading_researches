@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from historical_data_processor import DeribitDataProcessor as Deribit
 
-
-
 class Strategy(ABC):
 
     @abstractmethod
@@ -123,10 +121,42 @@ class MomentumRSI(Strategy, Backtester):
         df.dropna(inplace=True)
         self.df = df
 
+class BasicMeanReversion(Strategy, Backtester):
+    def __init__(self, Exchange, start_year, start_month,
+                 start_day, holding_period, up_multiplier, down_multiplier, up_trend_signal, down_trend_signal, long_lookback_period, short_lookback_period, time_interval='1'):
+        Backtester.__init__(self, Exchange, start_year, start_month,
+                            start_day, holding_period, up_multiplier, down_multiplier, time_interval)
+        self.up_trend_signal = up_trend_signal
+        self.down_trend_signal = down_trend_signal
+        self.long_lookback_period = long_lookback_period
+        self.short_lookback_period = short_lookback_period
+
+    
+    def generate_signal(self):
+
+        df = self.df
+
+        df['min_price'] = df.close.rolling(self.short_lookback_period).min()
+        df['max_price'] = df.close.rolling(self.short_lookback_period).max()
+        df['up_trend_level'] = df.close.shift(self.long_lookback_period)*self.up_trend_signal
+        df['down_trend_level'] = df.close.shift(self.long_lookback_period)*self.down_trend_signal
+
+        df['long'] = ((df.close <= df.min_price) & (
+            df.close > df.up_trend_level)) * 1
+        df['short'] = ((df.close >= df.max_price) & (
+            df.close < df.down_trend_level)) * -1
+
+        df['entry'] = df['short'] + df['long']
+        df.dropna(inplace=True)
+        # breakpoint()
+        self.df = df  
+
+    
 if __name__ == '__main__': 
-    ma = MomentumRSI(Deribit, '2021', '01', '26', holding_period=18, up_multiplier=1.05,
-                    down_multiplier=0.95, RSI_lookback_period=14)
+    ma = BasicMeanReversion(Deribit, '2021', '01', '26', holding_period=300, up_multiplier=1.02,
+                    down_multiplier=0.98, up_trend_signal = 1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12)
     ma.run_backtester()
+    ma.df.to_csv('test.csv')
     # hh = HigherHighLowerLow(Deribit, '2021', '01', '26', holding_period=20,
     #                         up_multiplier=1.01, down_multiplier=0.99, time_interval='30')
     # hh.df['returns'] = hh.returns
