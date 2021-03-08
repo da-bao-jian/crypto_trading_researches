@@ -2,8 +2,10 @@ from abc import ABC, abstractmethod
 from backtester import Backtester
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import pandas as pd
 from historical_data_processor import DeribitDataProcessor as Deribit
+plt.style.use('ggplot')
 
 class Strategy(ABC):
 
@@ -122,10 +124,15 @@ class MomentumRSI(Strategy, Backtester):
         self.df = df
 
 class BasicMeanReversion(Strategy, Backtester):
-    def __init__(self, Exchange, start_year, start_month,
-                 start_day, holding_period, up_multiplier, down_multiplier, up_trend_signal, down_trend_signal, long_lookback_period, short_lookback_period, time_interval='1'):
-        Backtester.__init__(self, Exchange, start_year, start_month,
-                            start_day, holding_period, up_multiplier, down_multiplier, time_interval)
+    def __init__(self, holding_period, up_multiplier, down_multiplier, up_trend_signal, down_trend_signal, short_lookback_period, long_lookback_period, Exchange=None, start_year=None, start_month=None,
+                 start_day=None, time_interval='1', csv_path=False):
+
+        if csv_path == False and (Exchange == None or start_year == None or start_month == None or start_day == None):
+            raise Exception('Missing arguments')
+
+        Backtester.__init__(self, Exchange=Exchange, start_year=start_year, start_month=start_month,
+                            start_day=start_day, holding_period=holding_period, up_multiplier=up_multiplier, down_multiplier=down_multiplier, time_interval=time_interval, csv_path=csv_path)
+
         self.up_trend_signal = up_trend_signal
         self.down_trend_signal = down_trend_signal
         self.long_lookback_period = long_lookback_period
@@ -148,16 +155,15 @@ class BasicMeanReversion(Strategy, Backtester):
 
         df['entry'] = df['short'] + df['long']
         df.dropna(inplace=True)
-        # breakpoint()
         self.df = df  
 
     
 if __name__ == '__main__': 
-    ma = BasicMeanReversion(Deribit, '2021', '01', '26', holding_period=300, up_multiplier=1.02,
-                    down_multiplier=0.98, up_trend_signal = 1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12)
+    # ma = BasicMeanReversion(Exchange=Deribit, start_year='2020', start_month='01', start_day='26', holding_period=300, up_multiplier=1.02,
+    #                 down_multiplier=0.98, up_trend_signal = 1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12)
+    filename = 'new_data.csv'
+    ma = BasicMeanReversion(holding_period=300, up_multiplier=1.02,
+                            down_multiplier=0.98, up_trend_signal=1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12, csv_path=filename)
     ma.run_backtester()
-    ma.df.to_csv('test.csv')
-    # hh = HigherHighLowerLow(Deribit, '2021', '01', '26', holding_period=20,
-    #                         up_multiplier=1.01, down_multiplier=0.99, time_interval='30')
-    # hh.df['returns'] = hh.returns
-    # hh.df.to_csv('high_low_strategy')
+
+    # print(matplotlib.rcParams['backend'])

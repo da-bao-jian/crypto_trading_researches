@@ -130,7 +130,7 @@ class DeribitDataProcessor:
                 del df[col]
         return df
     
-    def REST_polling(self, write_file = False, name_of_csv='new_data', cleaned_column=True):
+    def REST_polling(self, write_file = True, name_of_csv='new_data.csv', cleaned_column=True):
 
         day_span = (dt.now()-dt.fromtimestamp(self.start)).days
         df = pd.DataFrame()
@@ -156,7 +156,7 @@ class DeribitDataProcessor:
 
             response = self.api_loop(self.call_api, json.dumps(new_request))
             pandaed = self.to_pandas_df(response)
-            pandaed['next_open'] = pandaed.open.shift(-1)
+            pandaed['next_open'] = pandaed.open.shift(-1) #change this to the random price within one standard deviation from last ohlc 
             pandaed.drop(pandaed.tail(1).index,
                     inplace=True)
             
@@ -170,7 +170,8 @@ class DeribitDataProcessor:
             time.sleep(0.01)
 
         if write_file:  
-            return df.to_csv(name_of_csv)
+            df.to_csv(name_of_csv)
+            return df
         else:
             return df
 
