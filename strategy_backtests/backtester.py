@@ -92,8 +92,7 @@ class Backtester:
         results = np.array(self.returns)
         all_returns = results.cumsum()
         time = np.array(self.df.timestamp)
-        plt.plot(time, all_returns)
-        # breakpoint()
+        plt.plot(all_returns)
         plt.show()
 
     def run_backtester(self, using_close_price=True):
