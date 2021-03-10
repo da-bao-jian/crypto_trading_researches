@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from backtester import Backtester
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 import pandas as pd
 from historical_data_processor import DeribitDataProcessor as Deribit
 plt.style.use('ggplot')
@@ -17,7 +16,7 @@ class Strategy(ABC):
 
 class MAStrategy(Strategy, Backtester): 
     '''
-    sample MA strategy for testing
+    Sample MA strategy for testing
     '''
     def __init__(self, Exchange, start_year, start_month,
                  start_day, holding_period, up_multiplier, down_multiplier, 
@@ -48,7 +47,7 @@ class MAStrategy(Strategy, Backtester):
 
 class HigherHighLowerLow(Strategy, Backtester):
     '''
-    simple high low strategy for testing
+    Sample high low strategy for testing
     '''
     def __init__(self, Exchange, start_year, start_month,
                  start_day, holding_period, up_multiplier, down_multiplier, time_interval='60'):
@@ -76,7 +75,7 @@ class HigherHighLowerLow(Strategy, Backtester):
 
 class MomentumRSI(Strategy, Backtester):
     '''
-     momentum RSI strategy for testing
+    Sample momentum RSI strategy for testing
     '''
     def __init__(self, Exchange, start_year, start_month,
                  start_day, holding_period, up_multiplier, down_multiplier, RSI_lookback_period, time_interval='60', RSI_short=30, RSI_long=80, MA_long_period=200, MA_short_period=50):
@@ -124,6 +123,9 @@ class MomentumRSI(Strategy, Backtester):
         self.df = df
 
 class BasicMeanReversion(Strategy, Backtester):
+    '''
+    Sample mean reversion strategy from Ernest Chan's book 'Algorithmic Trading: Winning Strategies and Their Rationale'
+    '''
     def __init__(self, holding_period, up_multiplier, down_multiplier, up_trend_signal, down_trend_signal, short_lookback_period, long_lookback_period, Exchange=None, start_year=None, start_month=None,
                  start_day=None, time_interval='1', csv_path=False):
 
@@ -157,13 +159,61 @@ class BasicMeanReversion(Strategy, Backtester):
         df.dropna(inplace=True)
         self.df = df  
 
+class PolynomialTrend(Strategy, Backtester):
+    '''
+    Sample second degree polynomial trend strategy constantly rolls out predicted price trajectory using OLS to find the beta
+    OLS model details: https://www.fsb.miamioh.edu/lij14/411_note_matrix.pdf
+    '''
+
+    def __init__(self, holding_period, up_multiplier, down_multiplier, lookback_period, lookahead_period, long_threshold, short_threshold, Exchange=None, start_year=None, start_month=None,
+                 start_day=None, time_interval='1', csv_path=False):
+
+        if csv_path == False and (Exchange == None or start_year == None or start_month == None or start_day == None):
+            raise Exception('Missing arguments')
+
+        Backtester.__init__(self, Exchange=Exchange, start_year=start_year, start_month=start_month,
+                            start_day=start_day, holding_period=holding_period, up_multiplier=up_multiplier, down_multiplier=down_multiplier, time_interval=time_interval, csv_path=csv_path)
+
+        self.lookahead_period = lookahead_period
+        self.lookback_period = lookback_period
+        self.long_threshold = long_threshold
+        self.short_threshold = short_threshold
     
+    @staticmethod
+    def poly_model(series, lookahead):
+        '''
+        β =(X.T @ X)^−1 @ X.T @y
+        '''
+        y = series.values.reshape(-1,1)
+        t = np.arange(len(y))
+        X = np.c_[np.ones_like(y), t, t**2]
+        beta = np.linalg.inv(X.T @ X) @ X.T @ y
+        lookahead_value = np.array([1, t[-1]+lookahead, (t[-1]+lookahead)**2])
+        predicted_y = lookahead_value @ beta
+        return predicted_y
+
+    def generate_signal(self):    
+        df = self.df
+        df['predicted_val'] = df.close.rolling(self.lookback_period).apply(self.poly_model, args=(self.lookahead_period,))
+        df['delta'] = (df.predicted_val/df.close) -1
+        df['long'] = (df['delta'] > self.long_threshold) * 1
+        df['short'] = (df['delta'] < self.short_threshold) * -1 
+        df['entry'] = df['short'] + df['long']
+        df.dropna(inplace=True)
+
+        self.df = df 
+    
+
 if __name__ == '__main__': 
     # ma = BasicMeanReversion(Exchange=Deribit, start_year='2020', start_month='01', start_day='26', holding_period=300, up_multiplier=1.02,
     #                 down_multiplier=0.98, up_trend_signal = 1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12)
-    filename = 'new_data.csv'
-    ma = BasicMeanReversion(holding_period=300, up_multiplier=1.02,
-                            down_multiplier=0.98, up_trend_signal=1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12, csv_path=filename)
-    ma.run_backtester()
+    # filename = 'new_data.csv'
+    # ma = BasicMeanReversion(holding_period=300, up_multiplier=1.02,
+    #                         down_multiplier=0.98, up_trend_signal=1.03, down_trend_signal=0.97, long_lookback_period=60*24*5, short_lookback_period=60*12, csv_path=filename)
+    
+    poly = PolynomialTrend(Exchange=Deribit, start_year='2021', start_month='01', start_day='26', 
+                            holding_period=300, up_multiplier=1.02, lookback_period=48, lookahead_period=4, 
+                            long_threshold=0.03, short_threshold=-0.03,
+                           down_multiplier=0.98, time_interval='30')
+    poly.run_backtester()
 
-    # print(matplotlib.rcParams['backend'])
