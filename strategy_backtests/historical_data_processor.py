@@ -341,5 +341,5 @@ if __name__ == '__main__':
 
 # market: str, start_time: float = None, end_time: float = None
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
-    res = acc.get_all_trades(market='BTC-PERP')
+    res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
     print(res)
