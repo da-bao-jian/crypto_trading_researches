@@ -339,7 +339,5 @@ if __name__ == '__main__':
     # dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
     # plt.plot(dataframe.timestamp, dataframe.close)
 
-# market: str, start_time: float = None, end_time: float = None
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
-    print(res)
