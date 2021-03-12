@@ -217,7 +217,7 @@ class FTXDataProcessor:
             end_time = min(parse_datetime(t['time']) for t in response).timestamp()
             if len(response) < limit:
                 break
-        return results #returns list
+        return pd.DataFrame(results)  # returns list
 
     def get_all_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
         '''
@@ -237,13 +237,13 @@ class FTXDataProcessor:
             results = deduped_candles + results
             unix_times |= {r['time'] for r in deduped_candles}
             print(
-                f'Adding {len(response)} candles with end time {dt.fromtimestamp(int(end_time))}')
+                f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
             if len(response) == 0:
                 break
             end_time = min(parse_datetime(t['startTime']) for t in response).timestamp()
             if len(response) < limit:
                 break
-        return results  # returns list
+        return pd.DataFrame(results)  
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
@@ -371,9 +371,5 @@ if __name__ == '__main__':
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
     res = acc.get_all_OHCL(
         market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    print(res[0])
-    print(res[-1])
-    # res = acc.get_all_trades(
-    #     market='BTC-PERP', start_time='1615093200', end_time='1615352400')
-    # {'id': 576467907, 'liquidation': False, 'price': 53727.0, 'side': 'sell',
-    #     'size': 0.0037, 'time': '2021-03-10T04:59:57.855187+00:00'}
+    res.to_csv('1min_data.csv')
+
