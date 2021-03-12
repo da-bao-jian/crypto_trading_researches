@@ -195,27 +195,55 @@ class FTXDataProcessor:
     def get_position(self, name: str, show_avg_price: bool = False) -> dict:
         return next(filter(lambda x: x['future'] == name, self.get_positions(show_avg_price)), None)
 
-    def get_all_trades(self, market: str, start_time: float = None, end_time: float = None) -> List:
+    def get_all_trades(self, market: str, start_time: float = None, end_time: float = None):
+        '''
+         {'id': 576467907, 'liquidation': False, 'price': 53727.0, 'side': 'sell', 'size': 0.0037, 'time': '2021-03-10T04:59:57.855187+00:00'}
+        '''
         ids = set()
         limit = 100
         results = []
         while True:
             response = self._get(f'markets/{market}/trades', {
                 'end_time': end_time,
-                'start_time': start_time,
+                'start_time': start_time
             })
             deduped_trades = [r for r in response if r['id'] not in ids]
             results.extend(deduped_trades)
             ids |= {r['id'] for r in deduped_trades}
-            print(f'Adding {len(response)} trades with end time {end_time}')
+            breakpoint()
+            print(f'Adding {len(response)} trades with end time {dt.fromtimestamp(int(end_time))}')
             if len(response) == 0:
                 break
-            end_time = min(parse_datetime(t['time'])
-                           for t in response).timestamp()
+            end_time = min(parse_datetime(t['time']) for t in response).timestamp()
             if len(response) < limit:
                 break
-        return results
+        return results #returns list
 
+    def get_all_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+        '''
+        {'close': 49483.0, 'high': 49510.0, 'low': 49473.0, 'open': 49475.0, 'startTime': '2021-03-07T05:00:00+00:00', 'time': 1615093200000.0, 'volume': 649052.5699}
+        '''
+        unix_times = set()
+        limit = 100
+        results = []
+        while True:
+            response = self._get(f'markets/{market}/candles', {
+                'end_time': end_time,
+                'start_time': start_time,
+                'resolution': resolution,
+                'limit': 5000
+            })
+            deduped_candles = [r for r in response if r['time'] not in unix_times]
+            results = deduped_candles + results
+            unix_times |= {r['time'] for r in deduped_candles}
+            print(
+                f'Adding {len(response)} candles with end time {dt.fromtimestamp(int(end_time))}')
+            if len(response) == 0:
+                break
+            end_time = min(parse_datetime(t['startTime']) for t in response).timestamp()
+            if len(response) < limit:
+                break
+        return results  # returns list
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
@@ -340,4 +368,12 @@ if __name__ == '__main__':
     # plt.plot(dataframe.timestamp, dataframe.close)
 
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
-    res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
+    # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
+    res = acc.get_all_OHCL(
+        market='BTC-PERP', start_time='1606798800', end_time='1615352400')
+    print(res[0])
+    print(res[-1])
+    # res = acc.get_all_trades(
+    #     market='BTC-PERP', start_time='1615093200', end_time='1615352400')
+    # {'id': 576467907, 'liquidation': False, 'price': 53727.0, 'side': 'sell',
+    #     'size': 0.0037, 'time': '2021-03-10T04:59:57.855187+00:00'}
