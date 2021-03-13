@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any, List
 import urllib.parse  
 from requests import Request, Session, Response
 import hmac
-from ciso8601 import parse_datetime
+# from ciso8601 import parse_datetime
 
 # Binance OHCL data
 class BinanceDataProcessor:
@@ -210,14 +210,20 @@ class FTXDataProcessor:
             deduped_trades = [r for r in response if r['id'] not in ids]
             results.extend(deduped_trades)
             ids |= {r['id'] for r in deduped_trades}
-            breakpoint()
             print(f'Adding {len(response)} trades with end time {dt.fromtimestamp(int(end_time))}')
             if len(response) == 0:
                 break
-            end_time = min(parse_datetime(t['time']) for t in response).timestamp()
+            end_time = min(dt.fromisoformat(t['time']) for t in response).timestamp()
             if len(response) < limit:
                 break
-        return pd.DataFrame(results)  # returns list
+
+        df = pd.DataFrame(results)
+        df = df.drop(columns=['time'])
+        df = df.rename(columns={"startTime": "timestamp"})
+        df['next_open'] = df.open.shift(-1)
+        return df
+
+        return df
 
     def get_all_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
         '''
@@ -240,10 +246,15 @@ class FTXDataProcessor:
                 f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
             if len(response) == 0:
                 break
-            end_time = min(parse_datetime(t['startTime']) for t in response).timestamp()
+            end_time = min(dt.fromisoformat(t['startTime']) for t in response).timestamp()
             if len(response) < limit:
                 break
-        return pd.DataFrame(results)  
+
+        df = pd.DataFrame(results)
+        df = df.drop(columns=['time'])
+        df = df.rename(columns={"startTime": "timestamp"})
+        df['next_open'] = df.open.shift(-1)
+        return df  
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
@@ -369,7 +380,7 @@ if __name__ == '__main__':
 
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
-    res = acc.get_all_OHCL(
-        market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    res.to_csv('1min_data.csv')
-
+    res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
+    # res = acc.get_all_trades(
+    #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
+    res.to_csv('1min_FTX.csv')

@@ -7,21 +7,24 @@ from datetime import datetime as dt
 
 class Backtester: 
 
-    def __init__(self, csv_path=False, Exchange=None, start_year=None, start_month=None, start_day=None, holding_period=None, up_multiplier=None, down_multiplier=None, time_interval=None):
+    def __init__(self, csv_path=True, Exchange=None, start_year=None, start_month=None, start_day=None, holding_period=None, up_multiplier=None, down_multiplier=None, time_interval=None):
         
         if csv_path != False:
-            data = pd.read_csv(csv_path)
-            self.df = data
+            if csv_path == True:
+                raise ValueError('No csv path provided')
+            else:
+                data = pd.read_csv(csv_path)
+                self.df = data
         else:
             self.exchange = Exchange(
-                start_year, start_month, start_day, time_interval = time_interval)
+                    start_year, start_month, start_day, time_interval = time_interval)
             self.df = self.exchange.REST_polling()
         
         self.holding_period = holding_period
         self.constant_holding = holding_period
 
         # breakpoint()
-        self.end = self.df.timestamp.values[-1]
+        self.end = self.df['timestamp'].values[-1]
 
         self.open_positions = False 
         self.take_profits = None
