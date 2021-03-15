@@ -15,7 +15,6 @@ from typing import Optional, Dict, Any, List
 import urllib.parse  
 from requests import Request, Session, Response
 import hmac
-# from ciso8601 import parse_datetime
 
 # Binance OHCL data
 class BinanceDataProcessor:
@@ -90,22 +89,22 @@ class FTXDataProcessor:
                 raise Exception(data['error'])
             return data['result']
 
-    def list_futures(self) -> List[dict]:
+    def list_futures(self):
         return self._get('futures')
 
     def list_markets(self) -> List[dict]:
         return self._get('markets')
 
-    def get_orderbook(self, market: str, depth: int = None) -> dict:
+    def get_orderbook(self, market: str, depth: int = None):
         return self._get(f'markets/{market}/orderbook', {'depth': depth})
 
-    def get_trades(self, market: str) -> dict:
+    def get_trades(self, market: str):
         return self._get(f'markets/{market}/trades')
 
-    def get_account_info(self) -> dict:
+    def get_account_info(self):
         return self._get(f'account')
 
-    def get_open_orders(self, market: str = None) -> List[dict]:
+    def get_open_orders(self, market: str = None):
         return self._get(f'orders', {'market': market})
 
     def get_order_history(self, market: str = None, side: str = None, order_type: str = None, start_time: float = None, end_time: float = None) -> List[dict]:
@@ -118,7 +117,7 @@ class FTXDataProcessor:
         self, existing_order_id: Optional[str] = None,
         existing_client_order_id: Optional[str] = None, price: Optional[float] = None,
         size: Optional[float] = None, client_order_id: Optional[str] = None,
-    ) -> dict:
+    ) :
         assert (existing_order_id is None) ^ (existing_client_order_id is None), \
             'Must supply exactly one ID for the order to modify'
         assert (price is None) or (
@@ -131,12 +130,12 @@ class FTXDataProcessor:
             ** ({'clientId': client_order_id} if client_order_id is not None else {}),
         })
 
-    def get_conditional_orders(self, market: str = None) -> List[dict]:
+    def get_conditional_orders(self, market: str = None):
         return self._get(f'conditional_orders', {'market': market})
 
     def place_order(self, market: str, side: str, price: float, size: float, type: str = 'limit',
                     reduce_only: bool = False, ioc: bool = False, post_only: bool = False,
-                    client_id: str = None) -> dict:
+                    client_id: str = None):
         return self._post('orders', {'market': market,
                                      'side': side,
                                      'price': price,
@@ -152,7 +151,7 @@ class FTXDataProcessor:
         self, market: str, side: str, size: float, type: str = 'stop',
         limit_price: float = None, reduce_only: bool = False, cancel: bool = True,
         trigger_price: float = None, trail_value: float = None
-    ) -> dict:
+    ):
         """
         To send a Stop Market order, set type='stop' and supply a trigger_price
         To send a Stop Limit order, also supply a limit_price
@@ -170,29 +169,29 @@ class FTXDataProcessor:
                            'size': size, 'reduceOnly': reduce_only, 'type': 'stop',
                            'cancelLimitOnTrigger': cancel, 'orderPrice': limit_price})
 
-    def cancel_order(self, order_id: str) -> dict:
+    def cancel_order(self, order_id: str):
         return self._delete(f'orders/{order_id}')
 
     def cancel_orders(self, market_name: str = None, conditional_orders: bool = False,
-                      limit_orders: bool = False) -> dict:
+                      limit_orders: bool = False):
         return self._delete(f'orders', {'market': market_name,
                                         'conditionalOrdersOnly': conditional_orders,
                                         'limitOrdersOnly': limit_orders,
                                         })
 
-    def get_fills(self) -> List[dict]:
+    def get_fills(self):
         return self._get(f'fills')
 
-    def get_balances(self) -> List[dict]:
+    def get_balances(self):
         return self._get('wallet/balances')
 
-    def get_deposit_address(self, ticker: str) -> dict:
+    def get_deposit_address(self, ticker: str):
         return self._get(f'wallet/deposit_address/{ticker}')
 
-    def get_positions(self, show_avg_price: bool = False) -> List[dict]:
+    def get_positions(self, show_avg_price: bool = False):
         return self._get('positions', {'showAvgPrice': show_avg_price})
 
-    def get_position(self, name: str, show_avg_price: bool = False) -> dict:
+    def get_position(self, name: str, show_avg_price: bool = False):
         return next(filter(lambda x: x['future'] == name, self.get_positions(show_avg_price)), None)
 
     def get_all_trades(self, market: str, start_time: float = None, end_time: float = None):
