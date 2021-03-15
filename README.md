@@ -1,4 +1,4 @@
-# crypto_trading_algos
+# crypto trading algos
 
 Tools built for my own trading activities 
 
