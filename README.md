@@ -10,3 +10,5 @@ Tools built for my own trading activities
 
 [Sample Strategies](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/strategy.py)
 * Sample stategies
+* [Backtest Runner](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/backtest_runner.ipynb)
+  * Results for some of the sample strategies
