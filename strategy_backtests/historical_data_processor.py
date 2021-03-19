@@ -254,6 +254,8 @@ class FTXDataProcessor:
         df = df.rename(columns={"startTime": "timestamp"})
         df['next_open'] = df.open.shift(-1)
         return df  
+    
+    def get_all_futures(self)
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
