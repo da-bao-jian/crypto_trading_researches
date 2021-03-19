@@ -255,7 +255,14 @@ class FTXDataProcessor:
         df['next_open'] = df.open.shift(-1)
         return df  
     
-    def get_all_futures(self)
+    def get_all_futures_tickers(self):
+
+    def get_futures_spreads(self):
+
+    def get_historical_funding(self):
+
+    def draw_pearson(self):
+
 
 # API Doc: https://docs.deribit.com/?python#public-get_instrument
 class DeribitDataProcessor:
