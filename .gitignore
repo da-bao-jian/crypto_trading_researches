@@ -1,4 +1,5 @@
 strategy_backtests/keys.py
 binance_tester/key.py
 data
+strategy_backtests/notebooks/keys.py
 *.csv
