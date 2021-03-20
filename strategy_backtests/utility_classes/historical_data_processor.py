@@ -376,18 +376,18 @@ class FTXDataProcessor:
 
     def get_all_futures_tickers(self):
         all_tickers=[]
-        response = self.get('futures')
+        response = self._get('futures')
         for ticker in response:
             all_tickers.append(ticker['name'])
         return all_tickers
 
-    def get_historical_futures(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
-        
+    # def get_historical_futures(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+    #     # get historical data by each time period
 
 
-    def get_historical_funding(self):
+    # def get_historical_funding(self):
 
-    def draw_pearson(self):
+    # def draw_pearson(self):
 
 
 if __name__ == '__main__':
