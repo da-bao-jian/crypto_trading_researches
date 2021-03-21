@@ -401,6 +401,16 @@ class FTXDataProcessor:
         return res 
 
     def get_expired_futures_dates(self):
+        '''
+        expiration date: 1225 | Date December 2020
+        expiration date: 0925 | Date September 2020
+        expiration date: 0626 | Date June 2020
+        expiration date: 20200327 | Date March 2020
+        expiration date: 20191227 | Date December 2019
+        expiration date: 20190927 | Date September 2019
+        expiration date: 20190628 | Date June 2019
+        expiration date: 20190329 | Date March 2019
+        '''
         expired_futures = self._get('expired_futures')
         for ticker in expired_futures:
             if ticker['underlying'] == 'ETH':
@@ -408,16 +418,24 @@ class FTXDataProcessor:
                 month_year = ticker['expiryDescription']
                 print(f'expiration date: {time_stamp} | Date {month_year}')
 
-    def get_all_futures_tickers(self):
+    def get_all_perp_tickers(self):
         all_tickers=[]
         response = self._get('futures')
         for ticker in response:
-            if ticker['perpetual']:
+            if ticker['perpetual'] and ticker['name'] not in all_tickers:
                 all_tickers.append(ticker['underlying'])
-        return set(all_tickers)
+        return all_tickers
 
+    def get_all_expired_futures_that_have_perps(self) -> List:
+        expired_futures = []
+        expired_futures = self._get('expired_futures')
+        current_perp_futures = self.get_all_perp_tickers()
+        for ticker in expired_futures:
+            if ticker['underlying'] in current_perp_futures and ticker['name'][4:8] != 'MOVE' and ticker['expiryDescription'] != 'March 2019' and ticker['expiryDescription'] != 'June 2019':
+                expired_futures.append(ticker['name'])
 
-
+        return expired_futures
+        
     # def get_historical_funding(self):
 
     # def draw_pearson(self):
