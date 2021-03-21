@@ -15,6 +15,8 @@ from typing import Optional, Dict, Any, List
 import urllib.parse  
 from requests import Request, Session, Response
 import hmac
+import dateutil.parser as dp
+
 
 
 def timestamp_to_unix(year, month, day):
@@ -384,16 +386,17 @@ class FTXDataProcessor:
         df['next_open'] = df.open.shift(-1)
         return df
 
-    def get_expired_futures_OHCL(self, market: str, year: int, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+    def get_expired_futures_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
         try:
             int(market[-4:])
         except:
             raise ValueError('Please specify the expiration date')
         
         if end_time == None:
-            month = int(market[-4:-2])
-            day = int(market[-2:])
-            end_time = int(timestamp_to_unix(year, month, day))
+            expired_futures = self._get('expired_futures')
+            for ticker in expired_futures:
+                if ticker['name'] == market:
+                    end_time = int(dp.parse(ticker['expiry']).timestamp())
         res = self.get_all_OHCL(market = market, resolution = resolution, end_time = end_time)
         return res 
 
