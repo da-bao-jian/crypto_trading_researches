@@ -400,6 +400,48 @@ class FTXDataProcessor:
         res = self.get_all_OHCL(market = market, resolution = resolution, end_time = end_time)
         return res 
 
+    def get_historical_funding(self, market: str, start_time: float = None, end_time: float = None, limit: int=5000):
+        try:
+            market[-4:] == 'PERP'
+        except:
+            raise ValueError('Please choose a valid futures contract that has funding')
+        
+        if end_time == None:
+            end_time = time.time()
+
+        if start_time == None:
+            start_time = 1557288000
+        
+        unix_times = set()
+        limit = 100
+        results = []
+        while True:
+
+            response = self._get(f'/funding_rates', {
+                'end_time': end_time,
+                'start_time': start_time,
+                'future': market
+            })
+            deduped_candles = [
+                r for r in response if r['time'] not in unix_times]
+            results = results + deduped_candles
+            unix_times |= {r['time'] for r in deduped_candles}
+            stamp = dp.parse(results[-1]['time']).timestamp()
+            print(
+                f'Adding {len(response)} funding data with start time {dt.fromtimestamp(int(stamp))}')
+            if len(response) == 0:
+                break
+            m=min(t['time'] for t in response)
+            end_time = int(dp.parse(m).timestamp())
+            if len(response) < limit:
+                break
+        
+        df = pd.DataFrame(results)
+        df = df.iloc[::-1]
+        df = df.rename(columns={"time": "timestamp"})
+        return df
+
+
     def get_expired_futures_dates(self):
         '''
         expiration date: 1225 | Date December 2020
@@ -437,14 +479,24 @@ class FTXDataProcessor:
         return expired_futures_arr
     
     def write_all_expired_futures_OHCL(self, path: str, resolution: int=60):
+
         expired_futures = self.get_all_expired_futures_that_have_perps()
         
+        errors = []
+
         for ticker in expired_futures:
-            expired_future_dataframe = self.get_expired_futures_OHCL(market=ticker, resolution=resolution)
-            file_path = os.path.join(
-                path, "{}_{}_data.csv".format(ticker, resolution))
-            expired_future_dataframe.to_csv(file_path, index=False)
-    # def get_historical_funding(self):
+            try:
+                if ticker[-4:] != 'PERP':
+                    expired_future_dataframe = self.get_expired_futures_OHCL(market=ticker, resolution=resolution)
+                    file_path = os.path.join(
+                        path, "{}_{}_data.csv".format(ticker, resolution))
+                    expired_future_dataframe.to_csv(file_path, index=False)
+            except:
+                errors.append('There has been an error in writing file {}'.format(ticker))
+                pass
+        
+        for e in errors:
+            print(e)
 
     # def draw_pearson(self):
 
@@ -462,5 +514,6 @@ if __name__ == '__main__':
     # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     # res = acc.get_all_trades(
     #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    eth_hist_futures = acc.get_expired_futures_OHCL(market = 'ETH-0326', year = 2020, resolution = 3600)
+    eth_funding = acc.get_historical_funding(
+        market='XTZ-PERP')
 
