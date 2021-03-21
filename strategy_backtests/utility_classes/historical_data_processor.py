@@ -412,8 +412,9 @@ class FTXDataProcessor:
         all_tickers=[]
         response = self._get('futures')
         for ticker in response:
-            all_tickers.append(ticker['name'])
-        return all_tickers
+            if ticker['perpetual']:
+                all_tickers.append(ticker['underlying'])
+        return set(all_tickers)
 
 
 
