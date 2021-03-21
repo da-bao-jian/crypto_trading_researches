@@ -16,6 +16,15 @@ import urllib.parse
 from requests import Request, Session, Response
 import hmac
 
+
+def timestamp_to_unix(year, month, day):
+    return dt(year, month, day).timestamp()
+
+
+def unix_to_timestamp(uni):
+    return dt.fromtimestamp(uni)
+
+
 # Binance OHCL data
 class BinanceDataProcessor:
 
@@ -349,6 +358,7 @@ class FTXDataProcessor:
         limit = 100
         results = []
         while True:
+
             response = self._get(f'markets/{market}/candles', {
                 'end_time': end_time,
                 'start_time': start_time,
@@ -374,6 +384,27 @@ class FTXDataProcessor:
         df['next_open'] = df.open.shift(-1)
         return df
 
+    def get_expired_futures_OHCL(self, market: str, year: int, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+        try:
+            int(market[-4:])
+        except:
+            raise ValueError('Please specify the expiration date')
+        
+        if end_time == None:
+            month = int(market[-4:-2])
+            day = int(market[-2:])
+            end_time = int(timestamp_to_unix(year, month, day))
+        res = self.get_all_OHCL(market = market, resolution = resolution, end_time = end_time)
+        return res 
+
+    def get_expired_futures_dates(self):
+        expired_futures = self._get('expired_futures')
+        for ticker in expired_futures:
+            if ticker['underlying'] == 'ETH':
+                time_stamp = ticker['name'][4:]
+                month_year = ticker['expiryDescription']
+                print(f'expiration date: {time_stamp} | Date {month_year}')
+
     def get_all_futures_tickers(self):
         all_tickers=[]
         response = self._get('futures')
@@ -381,8 +412,6 @@ class FTXDataProcessor:
             all_tickers.append(ticker['name'])
         return all_tickers
 
-    # def get_historical_futures(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
-    #     # get historical data by each time period
 
 
     # def get_historical_funding(self):
@@ -400,7 +429,8 @@ if __name__ == '__main__':
 
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
-    res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
+    # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     # res = acc.get_all_trades(
     #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    res.to_csv('1min_FTX.csv')
+    eth_hist_futures = acc.get_expired_futures_OHCL(market = 'ETH-0326', year = 2020, resolution = 3600)
+
