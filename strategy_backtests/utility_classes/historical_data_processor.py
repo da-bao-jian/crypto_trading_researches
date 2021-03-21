@@ -427,15 +427,23 @@ class FTXDataProcessor:
         return all_tickers
 
     def get_all_expired_futures_that_have_perps(self) -> List:
-        expired_futures = []
+        expired_futures_arr = []
         expired_futures = self._get('expired_futures')
         current_perp_futures = self.get_all_perp_tickers()
         for ticker in expired_futures:
             if ticker['underlying'] in current_perp_futures and ticker['name'][4:8] != 'MOVE' and ticker['expiryDescription'] != 'March 2019' and ticker['expiryDescription'] != 'June 2019':
-                expired_futures.append(ticker['name'])
+                expired_futures_arr.append(ticker['name'])
 
-        return expired_futures
+        return expired_futures_arr
+    
+    def write_all_expired_futures_OHCL(self, path: str, resolution: int=60):
+        expired_futures = self.get_all_expired_futures_that_have_perps()
         
+        for ticker in expired_futures:
+            expired_future_dataframe = self.get_expired_futures_OHCL(market=ticker, resolution=resolution)
+            file_path = os.path.join(
+                path, "{}_{}_data.csv".format(ticker, resolution))
+            expired_future_dataframe.to_csv(file_path, index=False)
     # def get_historical_funding(self):
 
     # def draw_pearson(self):
