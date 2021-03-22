@@ -454,7 +454,7 @@ class FTXDataProcessor:
 
             return df
         else:
-            raise ValueError('Please only enter perpetual contract to use this function')
+            raise ValueError('Please only enter a valid perpetual contract to use this function')
 
 
 
@@ -605,25 +605,30 @@ class FTXDataProcessor:
                 perp_dataframe.to_csv(file_path, index=False)        
             except:
                 errors.append(traceback.format_exc())
-                # breakpoint()
                 pass
 
-        # for e in errors:
-        #     print(e)
+        for e in errors:
+            print(e)
 
+    def get_spreads(self, perp_path: str, futures_path: str):
+
+        perp_data_df = pd.read_csv(perp_path).drop(columns=['next_open'])
+        futures_data_df = pd.read_csv(futures_path).drop(columns=['next_open'])
+
+        perp_data_df = perp_data_df.rename(
+            columns={'open': 'perp_open', 'high': 'perp_high', 'low':'perp_low', 'close':'perp_close', 'volume': 'perp_volume'}, inplace=True)
+        futures_data_df = perp_data_df.rename(
+            columns={'open': 'fut_open', 'high': 'fut_high', 'low': 'fut_low', 'close': 'fut_close', 'volume': 'fut_volume'}, inplace=True)
+        
+        joint_df = pd.merge(perp_data_df, futures_data_df, how='inner', on=['timestamp'])
+
+        joint_df['spread_open'] = joint_df['perp_open'] - joint_df['fut_open']
 
 
 if __name__ == '__main__':
 
     # deribit = DeribitDataProcessor('2021', '02', '26', time_interval='30')
-    # df = res.to_pandas_df(res.retrieve_data())
-    # complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
-    # dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
-    # plt.plot(dataframe.timestamp, dataframe.close)
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
-    # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    # res = acc.get_all_trades(
-    #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
 
