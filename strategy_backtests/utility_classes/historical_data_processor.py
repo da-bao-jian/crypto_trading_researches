@@ -439,6 +439,7 @@ class FTXDataProcessor:
         df = pd.DataFrame(results)
         df = df.iloc[::-1]
         df = df.rename(columns={"time": "timestamp"})
+        df.to_csv('funding.csv', index=False)
         return df
 
 
