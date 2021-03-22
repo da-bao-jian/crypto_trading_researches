@@ -424,12 +424,12 @@ class FTXDataProcessor:
                 deduped_candles = [
                     r for r in response if r['time'] not in unix_times]
 
-                # if market[-4:] == 'PERP':
-                funding_response = self._get(f'/funding_rates', {
-                    'end_time': int(deduped_candles[-1]['time']/1000),
-                    'start_time': int(deduped_candles[0]['time']/1000)-3600,
-                    'future': market
-                })
+                if len(deduped_candles) > 0: 
+                    funding_response = self._get(f'/funding_rates', {
+                        'end_time': int(deduped_candles[-1]['time']/1000),
+                        'start_time': int(deduped_candles[0]['time']/1000)-3600,
+                        'future': market
+                    })
 
                 for data in deduped_candles:
                     for funding_period in funding_response:
@@ -588,7 +588,6 @@ class FTXDataProcessor:
             print(e)
 
     def write_all_PERPs_OHCL(self, path: str, resolution: int=60):
-        
         all_tickers = []
         response = self._get('futures')
         for perp in response:
@@ -602,17 +601,16 @@ class FTXDataProcessor:
                 perp_dataframe = self.get_PERP_OHCL(
                     market=ticker, resolution=resolution)
                 file_path = os.path.join(
-                    path, "{}_historical_data.csv".format(market))
-                perp_dataframe.to_csv(file_path, index=False)
+                    path, "{}_historical_data.csv".format(ticker))
+                perp_dataframe.to_csv(file_path, index=False)        
             except:
-                errors.append(
-                    'There has been an error in writing file {}'.format(ticker))
+                errors.append(traceback.format_exc())
+                # breakpoint()
                 pass
 
-        for e in errors:
-            print(e)
+        # for e in errors:
+        #     print(e)
 
-    # def draw_pearson(self):
 
 
 if __name__ == '__main__':
@@ -622,12 +620,10 @@ if __name__ == '__main__':
     # complete_data = deribit.REST_polling(True, 'BTCPerp-09-26-20-to-03-01-21')
     # dataframe = pd.read_csv('BTCPerp-09-26-20-to-03-01-21.csv')
     # plt.plot(dataframe.timestamp, dataframe.close)
-
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
     # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     # res = acc.get_all_trades(
     #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    eth_funding = acc.write_all_PERPs_OHCL(
-        path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
+    acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
 
