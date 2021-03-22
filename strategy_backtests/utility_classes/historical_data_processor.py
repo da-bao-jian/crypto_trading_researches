@@ -356,9 +356,16 @@ class FTXDataProcessor:
         '''
         {'close': 49483.0, 'high': 49510.0, 'low': 49473.0, 'open': 49475.0, 'startTime': '2021-03-07T05:00:00+00:00', 'time': 1615093200000.0, 'volume': 649052.5699}
         '''
+        if end_time == None:
+            end_time = time.time()
+
+        if start_time == None:
+            start_time = 1557288000
+        
         unix_times = set()
         limit = 100
         results = []
+        
         while True:
 
             response = self._get(f'markets/{market}/candles', {
@@ -367,8 +374,9 @@ class FTXDataProcessor:
                 'resolution': resolution,
                 'limit': 5000
             })
-            deduped_candles = [
-                r for r in response if r['time'] not in unix_times]
+            deduped_candles = [r for r in response if r['time'] not in unix_times]
+
+
             results = deduped_candles + results
             unix_times |= {r['time'] for r in deduped_candles}
             print(
@@ -384,7 +392,71 @@ class FTXDataProcessor:
         df = df.drop(columns=['time'])
         df = df.rename(columns={"startTime": "timestamp"})
         df['next_open'] = df.open.shift(-1)
+        
         return df
+
+    def get_PERP_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+        '''
+        {'close': 49483.0, 'high': 49510.0, 'low': 49473.0, 'open': 49475.0, 'startTime': '2021-03-07T05:00:00+00:00', 'time': 1615093200000.0, 'volume': 649052.5699}
+        '''
+        
+        if market[-4:] == 'PERP': 
+        
+            if end_time == None:
+                end_time = time.time()
+
+            if start_time == None:
+                start_time = 1557288000
+
+            unix_times = set()
+            limit = 100
+            results = []
+
+            while True:
+
+                response = self._get(f'markets/{market}/candles', {
+                    'end_time': end_time,
+                    'start_time': start_time,
+                    'resolution': resolution,
+                    'limit': 5000
+                })
+
+                deduped_candles = [
+                    r for r in response if r['time'] not in unix_times]
+
+                # if market[-4:] == 'PERP':
+                funding_response = self._get(f'/funding_rates', {
+                    'end_time': int(deduped_candles[-1]['time']/1000),
+                    'start_time': int(deduped_candles[0]['time']/1000)-3600,
+                    'future': market
+                })
+
+                for data in deduped_candles:
+                    for funding_period in funding_response:
+                        if data['startTime'][:13] == funding_period['time'][:13]:
+                            data['funding_rate'] = funding_period['rate']
+
+                results = deduped_candles + results
+                unix_times |= {r['time'] for r in deduped_candles}
+                print(
+                    f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
+                if len(response) == 0:
+                    break
+                end_time = min(dt.fromisoformat(t['startTime'])
+                            for t in response).timestamp()
+                if len(response) < limit:
+                    break
+
+            df = pd.DataFrame(results)
+            df = df.drop(columns=['time'])
+            df = df.rename(columns={"startTime": "timestamp"})
+            df['next_open'] = df.open.shift(-1)
+
+            return df
+        else:
+            raise ValueError('Please only enter perpetual contract to use this function')
+
+
 
     def get_expired_futures_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
         try:
@@ -400,7 +472,7 @@ class FTXDataProcessor:
         res = self.get_all_OHCL(market = market, resolution = resolution, end_time = end_time)
         return res 
 
-    def get_historical_funding(self, market: str, start_time: float = None, end_time: float = None, limit: int=5000):
+    def get_historical_funding(self, market: str, path:str, start_time: float = None, end_time: float = None, limit: int=5000):
         try:
             market[-4:] == 'PERP'
         except:
@@ -439,9 +511,25 @@ class FTXDataProcessor:
         df = pd.DataFrame(results)
         df = df.iloc[::-1]
         df = df.rename(columns={"time": "timestamp"})
-        df.to_csv('funding.csv', index=False)
+
+        file_path = os.path.join(
+            path, "{}_historical_funding_data.csv".format(market))
+        df.to_csv(file_path, index=False)
+
         return df
 
+    def get_all_historical_funding_rates(self, path: str):
+        errors=[]
+        all_tickers = self.get_all_perp_tickers()
+        for ticker in all_tickers:
+            ticker = ticker+'-PERP'
+            try:
+                self.get_historical_funding(market = ticker, path = path)
+            except:
+                errors.append(f'Error occured while fetching {ticker} data')
+                pass
+        for e in errors:
+            print(e)
 
     def get_expired_futures_dates(self):
         '''
@@ -499,6 +587,26 @@ class FTXDataProcessor:
         for e in errors:
             print(e)
 
+    def write_all_PERPs_OHCL(self, path: str, resolution: int=60):
+        perp_tickers = self.get_all_perp_tickers()
+
+        errors = []
+
+        for ticker in perp_tickers:
+            try:
+                perp_dataframe = self.get_PERP_OHCL(
+                    market=ticker, resolution=resolution)
+                file_path = os.path.join(
+                    path, "{}_historical_data.csv".format(market))
+                perp_dataframe.to_csv(file_path, index=False)
+            except:
+                errors.append(
+                    'There has been an error in writing file {}'.format(ticker))
+                pass
+
+        for e in errors:
+            print(e)
+
     # def draw_pearson(self):
 
 
@@ -515,6 +623,6 @@ if __name__ == '__main__':
     # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     # res = acc.get_all_trades(
     #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    eth_funding = acc.get_historical_funding(
-        market='XTZ-PERP')
+    eth_funding = acc.get_PERP_OHCL(
+        market='ETH-PERP', path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
 
