@@ -588,11 +588,16 @@ class FTXDataProcessor:
             print(e)
 
     def write_all_PERPs_OHCL(self, path: str, resolution: int=60):
-        perp_tickers = self.get_all_perp_tickers()
+        
+        all_tickers = []
+        response = self._get('futures')
+        for perp in response:
+            if perp['perpetual'] and perp['name'] not in all_tickers:
+                all_tickers.append(perp['name'])
 
         errors = []
 
-        for ticker in perp_tickers:
+        for ticker in all_tickers:
             try:
                 perp_dataframe = self.get_PERP_OHCL(
                     market=ticker, resolution=resolution)
@@ -623,6 +628,6 @@ if __name__ == '__main__':
     # res = acc.get_all_OHCL(market='BTC-PERP', start_time='1606798800', end_time='1615352400')
     # res = acc.get_all_trades(
     #     market='BTC-PERP', start_time='1606798800', end_time='1615352400')
-    eth_funding = acc.get_PERP_OHCL(
-        market='ETH-PERP', path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
+    eth_funding = acc.write_all_PERPs_OHCL(
+        path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
 
