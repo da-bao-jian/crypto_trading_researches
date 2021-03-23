@@ -615,20 +615,44 @@ class FTXDataProcessor:
         perp_data_df = pd.read_csv(perp_path).drop(columns=['next_open'])
         futures_data_df = pd.read_csv(futures_path).drop(columns=['next_open'])
 
-        perp_data_df = perp_data_df.rename(
+        perp_data_df.rename(
             columns={'open': 'perp_open', 'high': 'perp_high', 'low':'perp_low', 'close':'perp_close', 'volume': 'perp_volume'}, inplace=True)
-        futures_data_df = perp_data_df.rename(
+        futures_data_df.rename(
             columns={'open': 'fut_open', 'high': 'fut_high', 'low': 'fut_low', 'close': 'fut_close', 'volume': 'fut_volume'}, inplace=True)
         
         joint_df = pd.merge(perp_data_df, futures_data_df, how='inner', on=['timestamp'])
 
-        joint_df['spread_open'] = joint_df['perp_open'] - joint_df['fut_open']
+        joint_df['spread_open'] = ((joint_df['perp_open'] - joint_df['fut_open']) / joint_df['perp_open']) * 100
+        joint_df['spread_high'] = ((
+            joint_df['perp_high'] - joint_df['fut_high']) / joint_df['perp_high']) * 100
+        joint_df['spread_low'] = ((
+            joint_df['perp_low'] - joint_df['fut_low']) / joint_df['perp_low']) * 100
+        joint_df['spread_close'] = ((
+            joint_df['perp_close'] - joint_df['fut_close']) / joint_df['perp_close']) * 100
+        
+        joint_df['perp_volume'] = perp_data_df['perp_volume']
+        joint_df['fut_volume'] = futures_data_df['fut_volume']
+        joint_df['perp_funding_rate'] = perp_data_df['funding_rate']
 
+        joint_df.drop(columns=['perp_open', 'perp_high',
+                               'perp_low', 'perp_close', 'fut_open', 'fut_high', 'fut_low', 'fut_close'], inplace=True)
+
+        return joint_df
+    
+    def write_all_spreads(self, output_path: str):
+
+
+
+        file_path = os.path.join(
+            output_path, "{}_historical_data.csv".format(ticker))
+        perp_dataframe.to_csv(file_path, index=False)
 
 if __name__ == '__main__':
 
     # deribit = DeribitDataProcessor('2021', '02', '26', time_interval='30')
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
-    acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
-
+    # acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
+    acc.get_spreads(
+        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps/AAVE-PERP_historical_data.csv',
+        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data/AAVE-1225_60_data.csv')
