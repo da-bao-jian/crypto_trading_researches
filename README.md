@@ -6,7 +6,7 @@ Crypto trading analytic tools
 * Now support Deribit and FTX
 
 [Backtester](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/backtester.py)
-* Backtesting class that can be incorporated with any strategies
+* Event driven backtesting class that can be incorporated with any strategies
 
 [Sample Strategies](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/strategy.py)
 * [Backtest Runner](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/backtest_runner.ipynb)
