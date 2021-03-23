@@ -643,7 +643,7 @@ class FTXDataProcessor:
         return joint_df
     
     def write_all_spreads(self, perp_folder_path: str, futures_folder_path: str, output_path: str):
-        error=[]
+        errors=[]
         for fut_data in os.scandir(futures_folder_path):
             try:
                 future_name = fut_data.path.split('/')[-1].split('_')[0]
