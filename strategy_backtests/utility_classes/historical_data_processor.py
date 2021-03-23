@@ -611,6 +611,9 @@ class FTXDataProcessor:
             print(e)
 
     def get_spreads(self, perp_path: str, futures_path: str):
+        '''
+        given perp and futures data, calculate the spreads
+        '''
 
         perp_data_df = pd.read_csv(perp_path).drop(columns=['next_open'])
         futures_data_df = pd.read_csv(futures_path).drop(columns=['next_open'])
@@ -639,13 +642,22 @@ class FTXDataProcessor:
 
         return joint_df
     
-    def write_all_spreads(self, output_path: str):
+    def write_all_spreads(self, perp_folder_path: str, futures_folder_path: str, output_path: str):
 
+        for fut_data in os.scandir(futures_folder_path):
 
+            future_name = fut_data.path.split('/')[-1].split('_')[0]
+            perp_name = fut_data.path.split('/')[-1].split('-')[0]
 
-        file_path = os.path.join(
-            output_path, "{}_historical_data.csv".format(ticker))
-        perp_dataframe.to_csv(file_path, index=False)
+            for perp_data in os.scandir(perp_folder_path):
+                if perp_name == perp_data.path.split('/')[-1].split('-')[0]:
+                    spread_df = self.get_spreads(perp_path=perp_data.path, futures_path=fut_data.path)
+
+                    file_path = os.path.join(
+                        output_path, "{}_spread_data.csv".format(future_name))
+                    spread_df.to_csv(file_path, index=False)
+
+                    print(f'Writing spread for {future_name}')
 
 if __name__ == '__main__':
 
@@ -653,6 +665,7 @@ if __name__ == '__main__':
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
     # acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
-    acc.get_spreads(
-        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps/AAVE-PERP_historical_data.csv',
-        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data/AAVE-1225_60_data.csv')
+    acc.write_all_spreads(
+        perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
+        futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
+        output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
