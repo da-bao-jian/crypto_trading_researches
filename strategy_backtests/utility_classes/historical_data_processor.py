@@ -643,21 +643,27 @@ class FTXDataProcessor:
         return joint_df
     
     def write_all_spreads(self, perp_folder_path: str, futures_folder_path: str, output_path: str):
-
+        error=[]
         for fut_data in os.scandir(futures_folder_path):
+            try:
+                future_name = fut_data.path.split('/')[-1].split('_')[0]
+                perp_name = fut_data.path.split('/')[-1].split('-')[0]
 
-            future_name = fut_data.path.split('/')[-1].split('_')[0]
-            perp_name = fut_data.path.split('/')[-1].split('-')[0]
+                for perp_data in os.scandir(perp_folder_path):
+                    if perp_name == perp_data.path.split('/')[-1].split('-')[0]:
+                        spread_df = self.get_spreads(perp_path=perp_data.path, futures_path=fut_data.path)
 
-            for perp_data in os.scandir(perp_folder_path):
-                if perp_name == perp_data.path.split('/')[-1].split('-')[0]:
-                    spread_df = self.get_spreads(perp_path=perp_data.path, futures_path=fut_data.path)
+                        file_path = os.path.join(
+                            output_path, "{}_spread_data.csv".format(future_name))
+                        spread_df.to_csv(file_path, index=False)
 
-                    file_path = os.path.join(
-                        output_path, "{}_spread_data.csv".format(future_name))
-                    spread_df.to_csv(file_path, index=False)
+                        print(f'Writing spread for {future_name}')
+            except:
+                errors.append(traceback.format_exc())
+                pass
 
-                    print(f'Writing spread for {future_name}')
+        for e in errors:
+            print(e)
 
 if __name__ == '__main__':
 
