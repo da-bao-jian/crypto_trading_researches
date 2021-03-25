@@ -15,4 +15,4 @@ Crypto trading analytic tools
 
 [Statistical Arbitrage Research](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/statistical_arb.ipynb)
  * Pearson coefficient heatmap
- * ![0925 spread pearson](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/images/0925_pearson.PNG)
+   * ![0925 spread pearson](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/images/0925_pearson.PNG)
