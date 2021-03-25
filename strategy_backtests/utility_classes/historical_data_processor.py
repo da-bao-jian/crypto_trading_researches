@@ -377,7 +377,6 @@ class FTXDataProcessor:
             })
             deduped_candles = [r for r in response if r['time'] not in unix_times]
 
-
             results = deduped_candles + results
             unix_times |= {r['time'] for r in deduped_candles}
             print(
@@ -549,6 +548,7 @@ class FTXDataProcessor:
                 time_stamp = ticker['name'][4:]
                 month_year = ticker['expiryDescription']
                 print(f'expiration date: {time_stamp} | Date {month_year}')
+        print('BTC-0626 data is missing from FTX end')
 
     def get_all_perp_tickers(self):
         all_tickers=[]
@@ -672,7 +672,9 @@ if __name__ == '__main__':
     acc = FTXDataProcessor(api_key=FTX_API_KEY, api_secret=FTX_API_SECRET)
     # res = acc._request('GET', 'markets/BTC-PERP/candles?resolution=60&limit=500')
     # acc.write_all_PERPs_OHCL(path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps')
-    acc.write_all_spreads(
-        perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
-        futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
-        output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
+    # acc.write_all_spreads(
+    #     perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
+    #     futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
+    #     output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
+
+    acc.get_all_OHCL(market='BTC-0626', resolution=60, limit=5000)
