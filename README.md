@@ -12,3 +12,7 @@ Crypto trading analytic tools
 [Sample Strategies](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/strategy.py)
 * [Backtest Runner](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/backtest_runner.ipynb)
   * Backtest results for some of the sample strategies
+
+[Statistical Arbitrage Research](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/statistical_arb.ipynb)
+ * Pearson coefficient heatmap
+ * ![0925 spread pearson](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/images/0925_pearson.PNG)
