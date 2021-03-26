@@ -376,6 +376,7 @@ class FTXDataProcessor:
                 'limit': 5000
             })
             deduped_candles = [r for r in response if r['time'] not in unix_times]
+            
 
             results = deduped_candles + results
             unix_times |= {r['time'] for r in deduped_candles}

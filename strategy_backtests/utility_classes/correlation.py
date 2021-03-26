@@ -7,6 +7,7 @@ import traceback
 import operator
 import numpy as np
 import dateutil.parser as dp
+import math
 
 
 class Correlation:
@@ -18,6 +19,7 @@ class Correlation:
 
         spread_df = pd.DataFrame() #making a dataframe for spreads across different tokens
         errors=[]
+        token_with_missing_values = []
         dates_aggregator_start = {} 
         dates_aggregator_end = {}
         
@@ -44,18 +46,21 @@ class Correlation:
                           key=operator.itemgetter(1))[0]
         try:
             for fut_data in os.scandir(self.spread_folder_path):
+
                 date_in_filename = fut_data.path.split('/')[-1].split('-')[1].split('_')[0]
                 if date_in_filename == futures_date and pd.read_csv(fut_data.path)['timestamp'][0] <= starting_time:
                     
                     token_name = fut_data.path.split('/')[-1].split('-')[0]
-                    all_spreads = pd.read_csv(
-                        fut_data.path)['spread_close']
-                    breakpoint()
-                    spread_df[token_name] = all_spreads.loc[(
-                        all_spreads['timestamp'] >= starting_time) & (all_spreads['timestamp'] <= ending_time)]
+                    all_spreads = pd.read_csv(fut_data.path)
+                    spread_df[token_name] = all_spreads.loc[(all_spreads['timestamp'] >= starting_time) & (all_spreads['timestamp'] <= ending_time)]['spread_close'].reset_index(drop=True)
                 else:
                     pass
-            breakpoint()
+
+            for (token_name, token_spread) in spread_df.tail(1).iteritems():
+                if math.isnan(token_spread.values[0]):
+                    token_with_missing_values.append(token_name)
+
+
             corr_matrix = spread_df.corr(method='pearson')
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
@@ -78,9 +83,12 @@ class Correlation:
         for e in errors:
             print(e)
 
+        ','.join(token_with_missing_values)
+        print('spreads from {} to {}'.format(starting_time, ending_time))
+        print(f'{token_with_missing_values} have missing values')
 
 if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
     corr.spreads_correlation_heatmap(
-            futures_date='0925', triangular=True, min_cor=0)
+            futures_date='20200327', triangular=True, min_cor=0)
