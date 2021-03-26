@@ -626,21 +626,17 @@ class FTXDataProcessor:
         
         joint_df = pd.merge(perp_data_df, futures_data_df, how='inner', on=['timestamp'])
 
-        joint_df['spread_open'] = ((joint_df['perp_open'] - joint_df['fut_open']) / joint_df['perp_open']) * 100
+        joint_df['spread_open'] = (
+            (joint_df['perp_open'] - joint_df['fut_open']) / joint_df['perp_open']) * 100
         joint_df['spread_high'] = ((
             joint_df['perp_high'] - joint_df['fut_high']) / joint_df['perp_high']) * 100
         joint_df['spread_low'] = ((
             joint_df['perp_low'] - joint_df['fut_low']) / joint_df['perp_low']) * 100
         joint_df['spread_close'] = ((
             joint_df['perp_close'] - joint_df['fut_close']) / joint_df['perp_close']) * 100
-        
-        joint_df['perp_volume'] = perp_data_df['perp_volume']
-        joint_df['fut_volume'] = futures_data_df['fut_volume']
-        joint_df['perp_funding_rate'] = perp_data_df['funding_rate']
 
         joint_df.drop(columns=['perp_open', 'perp_high',
                                'perp_low', 'perp_close', 'fut_open', 'fut_high', 'fut_low', 'fut_close'], inplace=True)
-
         return joint_df
     
     def write_all_spreads(self, perp_folder_path: str, futures_folder_path: str, output_path: str):
@@ -677,4 +673,6 @@ if __name__ == '__main__':
     #     futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
     #     output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
 
-    acc.get_all_OHCL(market='BTC-0626', resolution=60, limit=5000)
+    acc.get_spreads(
+        perp_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps/ETH-PERP_historical_data.csv', 
+        futures_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data/ETH-0925_60_data.csv')
