@@ -8,8 +8,44 @@ import operator
 import numpy as np
 import dateutil.parser as dp
 import math
-from csv_manager import CSVManager
+from datetime import datetime, timedelta
 
+class CSVManager:
+
+    def __init__(self, csv_path):
+
+        self.data = pd.read_csv(csv_path, parse_dates=[
+                                'timestamp'], index_col='timestamp')
+        self.data.dropna(inplace=True)
+        self.data.index.name = 'Starting time'
+        self.data['timestamp'] = [i.isoformat()
+                                  for i in self.data.index.to_pydatetime()]
+        self.df = self.data.copy()
+
+    def change_resolution(self, timeframe: str, file_type: str):
+
+        time_symbols = ['T', 'H']
+
+        if timeframe[-1] not in time_symbols:
+            raise ValueError(
+                'Only T(minute) and H(hour) timeframes are supported')
+
+        if file_type == 'PERP':
+            resample_dict = {'volume': 'sum', 'open': 'first',
+                             'low': 'min', 'high': 'max',
+                             'close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
+        elif file_type == 'SPREAD':
+            # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
+            resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
+                             'spread_low': 'min', 'spread_high': 'max',
+                             'spread_close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
+        elif file_type == 'FUTURE':
+            resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
+                             'spread_low': 'min', 'spread_high': 'max',
+                             'spread_close': 'last', 'timestamp': 'first'}
+        self.df = self.data.resample(timeframe).agg(resample_dict)
+        # self.timeframe = new_timeframe
+        return self.df
 
 class Correlation:
 
@@ -17,6 +53,12 @@ class Correlation:
         self.spread_folder_path = spread_folder_path
     
     def spreads_correlation_heatmap(self, futures_date: str, annot: bool=False, triangular: bool=False, min_cor: int = -1.0, max_cor: int=1.0, timeframe: str='1T'):
+
+        time_symbols = ['T', 'H']
+
+        if timeframe[-1] not in time_symbols:
+            raise ValueError(
+                'Only T(minute) and H(hour) timeframes are supported')
 
         spread_df = pd.DataFrame() #making a dataframe for spreads across different tokens
         errors=[]
@@ -53,7 +95,11 @@ class Correlation:
                     
                     token_name = fut_data.path.split('/')[-1].split('-')[0]
                     
-                    all_spreads = pd.read_csv(fut_data.path)
+                    if timeframe == '1T':
+                        all_spreads = pd.read_csv(fut_data.path)
+                    else:
+                        time_formated_file = CSVManager(fut_data.path)
+                        all_spreads = time_formated_file.change_resolution(timeframe, 'SPREAD')
                     spread_df[token_name] = all_spreads.loc[(all_spreads['timestamp'] >= starting_time) & (all_spreads['timestamp'] <= ending_time)]['spread_close'].reset_index(drop=True)
                 else:
                     pass
@@ -61,13 +107,13 @@ class Correlation:
             for (token_name, token_spread) in spread_df.tail(1).iteritems():
                 if math.isnan(token_spread.values[0]):
                     token_with_missing_values.append(token_name)
-            breakpoint()
+
             corr_matrix = spread_df.corr(method='pearson')
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
             if triangular:
             # Generate a mask for the upper triangle
-                mask = np.zeros_like(corr_matrix, dtype=np.bool)
+                mask = np.zeros_like(corr_matrix, dtype=bool)
                 mask[np.triu_indices_from(mask)] = True
             else:
                 mask = None
@@ -92,4 +138,4 @@ if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
     corr.spreads_correlation_heatmap(
-            futures_date='20200327', triangular=True, min_cor=0)
+            futures_date='20200327', triangular=True, min_cor=0, timeframe='30T')
