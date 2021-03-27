@@ -21,12 +21,12 @@ class CSVManager:
             resample_dict = {'volume': 'sum', 'open': 'first',
                             'low': 'min', 'high': 'max',
                              'close': 'last', 'funding_rate': 'mean'}
-        else if file_type == 'SPREAD':
+        elif file_type == 'SPREAD':
             # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
                              'spread_low': 'min', 'spread_high': 'max',
                              'spread_close': 'last', 'funding_rate': 'mean'}
-        else if file_type == 'FUTURE':
+        elif file_type == 'FUTURE':
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
                              'spread_low': 'min', 'spread_high': 'max',
                              'spread_close': 'last'}
@@ -37,4 +37,4 @@ class CSVManager:
 if __name__ == '__main__':
     perp = CSVManager(
         '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps/WAVES-PERP_historical_data.csv')
-    perp.change_resolution('H', 'PERP')
+    print(perp.change_resolution('30T', 'PERP'))
