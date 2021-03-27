@@ -8,6 +8,7 @@ import operator
 import numpy as np
 import dateutil.parser as dp
 import math
+from csv_manager import CSVManager
 
 
 class Correlation:
@@ -15,7 +16,7 @@ class Correlation:
     def __init__(self, spread_folder_path: str):
         self.spread_folder_path = spread_folder_path
     
-    def spreads_correlation_heatmap(self, futures_date: str, annot: bool=False, triangular: bool=False, min_cor: int = -1.0, max_cor: int=1.0):
+    def spreads_correlation_heatmap(self, futures_date: str, annot: bool=False, triangular: bool=False, min_cor: int = -1.0, max_cor: int=1.0, timeframe: str='1T'):
 
         spread_df = pd.DataFrame() #making a dataframe for spreads across different tokens
         errors=[]
@@ -51,6 +52,7 @@ class Correlation:
                 if date_in_filename == futures_date and pd.read_csv(fut_data.path)['timestamp'][0] <= starting_time:
                     
                     token_name = fut_data.path.split('/')[-1].split('-')[0]
+                    
                     all_spreads = pd.read_csv(fut_data.path)
                     spread_df[token_name] = all_spreads.loc[(all_spreads['timestamp'] >= starting_time) & (all_spreads['timestamp'] <= ending_time)]['spread_close'].reset_index(drop=True)
                 else:
@@ -59,8 +61,7 @@ class Correlation:
             for (token_name, token_spread) in spread_df.tail(1).iteritems():
                 if math.isnan(token_spread.values[0]):
                     token_with_missing_values.append(token_name)
-
-
+            breakpoint()
             corr_matrix = spread_df.corr(method='pearson')
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
