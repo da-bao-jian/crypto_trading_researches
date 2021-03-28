@@ -9,6 +9,7 @@ import numpy as np
 import dateutil.parser as dp
 import math
 from datetime import datetime, timedelta
+from statsmodels.tsa.stattools import coint
 
 class CSVManager:
 
@@ -52,7 +53,20 @@ class Correlation:
     def __init__(self, spread_folder_path: str):
         self.spread_folder_path = spread_folder_path
     
-    def spreads_correlation_heatmap(self, futures_date: str, annot: bool=False, triangular: bool=False, min_cor: int = -1.0, max_cor: int=1.0, timeframe: str='1T'):
+    def find_cointegration(self, df):
+        n = df.shape[1]
+        pvalue_matrix = np.ones((n, n))
+        keys = df.keys()
+        pairs = []
+        for i in range(n):
+            for j in range(i+1, n):
+                result = coint(df[keys[i]], df[keys[j]])
+                pvalue_matrix[i, j] = result[1]
+                if result[1] < 0.05:
+                    pairs.append((keys[i], keys[j]))
+        return pvalue_matrix, pairs
+
+    def spreads_correlation_heatmap(self, futures_date: str, coint: bool, annot: bool = False, triangular: bool = False, min_cor: int = -1.0, max_cor: int = 1.0, timeframe: str = '1T'):
 
         time_symbols = ['T', 'H']
 
@@ -107,20 +121,31 @@ class Correlation:
             for (token_name, token_spread) in spread_df.tail(1).iteritems():
                 if math.isnan(token_spread.values[0]):
                     token_with_missing_values.append(token_name)
-
-            corr_matrix = spread_df.corr(method='pearson')
+            
+            spread_df = spread_df.dropna()
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
-            if triangular:
-            # Generate a mask for the upper triangle
-                mask = np.zeros_like(corr_matrix, dtype=bool)
-                mask[np.triu_indices_from(mask)] = True
+            if coint:
+                corr_matrix, pairs = self.find_cointegration(spread_df)
+                fig, ax = plt.subplots(figsize=(40, 40))
+                graph = sns.heatmap(corr_matrix, xticklabels=spread_df.columns,
+                            yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.99))
+                graph.tick_params(top=True, labeltop=True)
+                plt.title('{} Cointegration Matrix P-Value'.format(futures_date))
+                print(f'Pairs that have p-value larger than 0.5')
             else:
-                mask = None
+                corr_matrix = spread_df.pct_change().corr(method='pearson')
+                if triangular:
+                # Generate a mask for the upper triangle
+                    mask = np.zeros_like(corr_matrix, dtype=bool)
+                    mask[np.triu_indices_from(mask)] = True
+                else:
+                    mask = None
+                fig, ax = plt.subplots(figsize=(40, 40))
+                sns.heatmap(corr_matrix, cmap=cmap, vmax=max_cor,
+                            vmin=min_cor, linewidths=0.5, annot=annot, fmt=".2f", mask=mask)
 
-            sns.heatmap(corr_matrix, cmap=cmap, vmax=max_cor,
-                        vmin=min_cor, linewidths=0.5, annot=annot, mask=mask)
-            plt.title('{} spreads Pearson correlation'.format(futures_date))
+                plt.title('{} spreads Pearson correlation'.format(futures_date))
             plt.show()
                 
         except:
@@ -133,9 +158,11 @@ class Correlation:
         ','.join(token_with_missing_values)
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
+        
+    
 
 if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
     corr.spreads_correlation_heatmap(
-            futures_date='20200327', triangular=True, min_cor=0, timeframe='30T')
+        futures_date='0326', coint=True, triangular=True,  timeframe='12H')
