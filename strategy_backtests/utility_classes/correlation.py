@@ -66,7 +66,7 @@ class Correlation:
                     pairs.append((keys[i], keys[j]))
         return pvalue_matrix, pairs
 
-    def spreads_correlation_heatmap(self, futures_date: str, coint: bool, annot: bool = False, triangular: bool = False, min_cor: int = -1.0, max_cor: int = 1.0, timeframe: str = '1T'):
+    def spreads_correlation_heatmap(self, futures_date: str, coint: bool, showing_only_below_threshold: bool=False, annot: bool = False, triangular: bool = False, min_cor: int = -1.0, max_cor: int = 1.0, timeframe: str = '1T'):
 
         time_symbols = ['T', 'H']
 
@@ -106,7 +106,6 @@ class Correlation:
 
                 date_in_filename = fut_data.path.split('/')[-1].split('-')[1].split('_')[0]
                 if date_in_filename == futures_date and pd.read_csv(fut_data.path)['timestamp'][0] <= starting_time:
-                    
                     token_name = fut_data.path.split('/')[-1].split('-')[0]
                     
                     if timeframe == '1T':
@@ -121,18 +120,24 @@ class Correlation:
             for (token_name, token_spread) in spread_df.tail(1).iteritems():
                 if math.isnan(token_spread.values[0]):
                     token_with_missing_values.append(token_name)
-            
+
             spread_df = spread_df.dropna()
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
             if coint:
                 corr_matrix, pairs = self.find_cointegration(spread_df)
                 fig, ax = plt.subplots(figsize=(40, 40))
-                graph = sns.heatmap(corr_matrix, xticklabels=False,
-                            yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.99))
+
+                if showing_only_below_threshold:
+                    graph = sns.heatmap(corr_matrix, xticklabels=spread_df.columns,
+                                yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.05))
+                else:
+                    graph = sns.heatmap(corr_matrix, xticklabels=spread_df.columns,
+                                        yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.99))
+                                        
                 graph.tick_params(top=True, labeltop=True)
                 plt.title('{} Cointegration Matrix P-Value'.format(futures_date))
-                print(f'Pairs that have p-value larger than 0.5: {pairs}')
+                # print(f'Pairs that have p-value larger than 0.5')
             else:
                 corr_matrix = spread_df.pct_change().corr(method='pearson')
                 if triangular:
@@ -165,4 +170,4 @@ if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
     corr.spreads_correlation_heatmap(
-        futures_date='0326', coint=True, triangular=True,  timeframe='12H')
+        futures_date='0326', coint=True, timeframe='H', annot=True)
