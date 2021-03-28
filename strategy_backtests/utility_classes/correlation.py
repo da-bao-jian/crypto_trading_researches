@@ -128,11 +128,11 @@ class Correlation:
             if coint:
                 corr_matrix, pairs = self.find_cointegration(spread_df)
                 fig, ax = plt.subplots(figsize=(40, 40))
-                graph = sns.heatmap(corr_matrix, xticklabels=spread_df.columns,
+                graph = sns.heatmap(corr_matrix, xticklabels=False,
                             yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.99))
                 graph.tick_params(top=True, labeltop=True)
                 plt.title('{} Cointegration Matrix P-Value'.format(futures_date))
-                print(f'Pairs that have p-value larger than 0.5')
+                print(f'Pairs that have p-value larger than 0.5: {pairs}')
             else:
                 corr_matrix = spread_df.pct_change().corr(method='pearson')
                 if triangular:
