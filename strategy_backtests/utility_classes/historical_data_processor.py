@@ -376,7 +376,7 @@ class FTXDataProcessor:
                 'limit': 5000
             })
             deduped_candles = [r for r in response if r['time'] not in unix_times]
-            
+
 
             results = deduped_candles + results
             unix_times |= {r['time'] for r in deduped_candles}
@@ -635,6 +635,7 @@ class FTXDataProcessor:
             joint_df['perp_low'] - joint_df['fut_low']) / joint_df['perp_low']) * 100
         joint_df['spread_close'] = ((
             joint_df['perp_close'] - joint_df['fut_close']) / joint_df['perp_close']) * 100
+        joint_df['spread_close_numerical'] = (joint_df['perp_close'] - joint_df['fut_close'])
 
         joint_df.drop(columns=['perp_open', 'perp_high',
                                'perp_low', 'perp_close', 'fut_open', 'fut_high', 'fut_low', 'fut_close'], inplace=True)

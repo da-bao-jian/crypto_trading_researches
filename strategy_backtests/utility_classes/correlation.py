@@ -39,7 +39,7 @@ class CSVManager:
             # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
                              'spread_low': 'min', 'spread_high': 'max',
-                             'spread_close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
+                             'spread_close': 'last', 'spread_close_numerical': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
         elif file_type == 'FUTURE':
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
                              'spread_low': 'min', 'spread_high': 'max',
@@ -114,6 +114,8 @@ class Correlation:
                         time_formated_file = CSVManager(fut_data.path)
                         all_spreads = time_formated_file.change_resolution(timeframe, 'SPREAD')
                     spread_df[token_name] = all_spreads.loc[(all_spreads['timestamp'] >= starting_time) & (all_spreads['timestamp'] <= ending_time)]['spread_close'].reset_index(drop=True)
+                    # spread_df[token_name] = all_spreads.loc[(all_spreads['timestamp'] >= starting_time) & (
+                    #     all_spreads['timestamp'] <= ending_time)]['spread_close_numerical'].reset_index(drop=True)
                 else:
                     pass
 
@@ -134,7 +136,7 @@ class Correlation:
                 else:
                     graph = sns.heatmap(corr_matrix, xticklabels=spread_df.columns,
                                         yticklabels=spread_df.columns, cmap=cmap, annot=annot, fmt=".2f", mask=(corr_matrix >= 0.99))
-                                        
+
                 graph.tick_params(top=True, labeltop=True)
                 plt.title('{} Cointegration Matrix P-Value'.format(futures_date))
                 # print(f'Pairs that have p-value larger than 0.5')
@@ -170,4 +172,4 @@ if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
     corr.spreads_correlation_heatmap(
-        futures_date='0326', coint=True, timeframe='H', annot=True)
+        futures_date='0326', coint=True, timeframe='H', showing_only_below_threshold=True, annot=True)
