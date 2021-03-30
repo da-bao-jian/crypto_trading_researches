@@ -165,7 +165,7 @@ class Correlation:
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
         
-    def plot_historical_spread(self, symbol: str, timeframe: str = '1T'):
+    def plot_historical_spread(self, symbol: str, timeframe: str = '1T', numerical_values: bool=False):
         
         plt.figure(figsize=(20,15))
 
@@ -174,9 +174,13 @@ class Correlation:
             if ticker.path.split('/')[-1].split('-')[0] == symbol:
                 spread = CSVManager(ticker.path)
                 spread = spread.change_resolution(timeframe, 'SPREAD')
-                plt.subplot(4,3,count)
+                plt.subplot(5,3,count)
+                # set a hard row number here; might need to change later
                 plt.title('{} {} spread data'.format(ticker.path.split('/')[-1].split('_')[0], timeframe))
-                plt.plot(spread['spread_close'])
+                if numerical_values:
+                    plt.plot(spread['spread_close_numerical'])
+                else:
+                    plt.plot(spread['spread_close'])
                 count += 1
         plt.tight_layout()
         plt.show()
