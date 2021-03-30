@@ -49,9 +49,8 @@ class CSVManager:
         return self.df
 
 class Correlation:
-
-    def __init__(self, spread_folder_path: str):
-        self.spread_folder_path = spread_folder_path
+    def __init__(self, folder_path: str):
+        self.folder_path = folder_path
     
     def find_cointegration(self, df):
         n = df.shape[1]
@@ -81,7 +80,7 @@ class Correlation:
         dates_aggregator_end = {}
         
         # cuz futures might have different starting date, I record all the starting date here and only use the one date that appear the most
-        for fut_data in os.scandir(self.spread_folder_path):
+        for fut_data in os.scandir(self.folder_path):
             if fut_data.path.split('/')[-1].split('-')[1].split('_')[0] == futures_date:
                 
                 starting_time = pd.read_csv(fut_data.path)['timestamp'][0]
@@ -102,7 +101,7 @@ class Correlation:
         ending_time = max(dates_aggregator_end.items(),
                           key=operator.itemgetter(1))[0]
         try:
-            for fut_data in os.scandir(self.spread_folder_path):
+            for fut_data in os.scandir(self.folder_path):
 
                 date_in_filename = fut_data.path.split('/')[-1].split('-')[1].split('_')[0]
                 if date_in_filename == futures_date and pd.read_csv(fut_data.path)['timestamp'][0] <= starting_time:
@@ -166,13 +165,24 @@ class Correlation:
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
         
-    def stationarity_test(self, symbol: str):
-        spread = pd.read_csv(file_path)
-        plt.spread
+    def plot_historical_spread(self, symbol: str, timeframe: str = '1T'):
+        
+        plt.figure(figsize=(20,15))
+
+        count = 1
+        for ticker in os.scandir(self.folder_path):
+            if ticker.path.split('/')[-1].split('-')[0] == symbol:
+                spread = CSVManager(ticker.path)
+                spread = spread.change_resolution(timeframe, 'SPREAD')
+                plt.subplot(4,3,count)
+                plt.title('{} {} spread data'.format(ticker.path.split('/')[-1].split('_')[0], timeframe))
+                plt.plot(spread['spread_close'])
+                count += 1
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == '__main__':
     corr = Correlation(
-        spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
-    corr.spreads_correlation_heatmap(
-        futures_date='0326', coint=True, timeframe='H', showing_only_below_threshold=True, annot=True)
+        folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
+    corr.plot_historical_spread('BTC', '30T')
