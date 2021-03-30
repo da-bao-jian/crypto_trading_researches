@@ -41,9 +41,9 @@ class CSVManager:
                              'spread_low': 'min', 'spread_high': 'max',
                              'spread_close': 'last', 'spread_close_numerical': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
         elif file_type == 'FUTURE':
-            resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
-                             'spread_low': 'min', 'spread_high': 'max',
-                             'spread_close': 'last', 'timestamp': 'first'}
+            resample_dict = {'volume': 'sum', 'open': 'first',
+                             'low': 'min', 'high': 'max',
+                             'close': 'last', 'timestamp': 'first'}
         self.df = self.data.resample(timeframe).agg(resample_dict)
         # self.timeframe = new_timeframe
         return self.df
@@ -164,7 +164,23 @@ class Correlation:
         ','.join(token_with_missing_values)
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
-        
+    
+    def plot_single_spread(self, symbol: str, timeframe: str = '1T', file_type: str='SPREAD'):
+        for ticker in os.scandir(self.folder_path):
+            if ticker.path.split('/')[-1].split('_')[0] == symbol:
+                file = CSVManager(ticker.path)
+                file = file.change_resolution(timeframe, file_type)
+                plt.title('{} {} spread data'.format(
+                    ticker.path.split('/')[-1].split('_')[0], timeframe))
+                if file_type == 'SPREAD':
+                    plt.plot(file['spread_close'])  
+                elif file_type == 'PERP':
+                    plt.plot(file['close'])
+                elif file_type == 'FUTURE':
+                    plt.plot(file['close'])
+        plt.show()
+
+
     def plot_historical_spread(self, symbol: str, timeframe: str = '1T', numerical_values: bool=False):
         
         plt.figure(figsize=(20,15))
