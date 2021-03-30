@@ -166,7 +166,10 @@ class Correlation:
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
         
-    
+    def stationarity_test(self, symbol: str):
+        spread = pd.read_csv(file_path)
+        plt.spread
+
 
 if __name__ == '__main__':
     corr = Correlation(
