@@ -15,5 +15,4 @@ Crypto trading analytic tools
   * Backtest results for some of the directional trading sample strategies
 
 [Statistical Arbitrage Research](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/statistical_arb.ipynb)
- * Pearson coefficient heatmap
-   * ![0925 spread pearson](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/images/0925_pearson.PNG)
+ * This research finds the tokens on FTX that exibit cointegrated movements between perpetual and futures contracts 
