@@ -2,7 +2,7 @@
 
 Crypto trading analytic tools
 
-All the API classes used in research Notebooks can be found in the [utility_classes](https://github.com/dabaojian1992/crypto_trading_researches/tree/master/strategy_backtests/utility_classes) folder
+All the API classes used in research Notebooks are stored in the [utility_classes](https://github.com/dabaojian1992/crypto_trading_researches/tree/master/strategy_backtests/utility_classes) folder
 
 [Data Processor API](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/historical_data_processor.py)
 * Now support Deribit and FTX
