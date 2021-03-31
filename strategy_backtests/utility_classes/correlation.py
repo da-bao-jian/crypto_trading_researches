@@ -49,9 +49,11 @@ class CSVManager:
         return self.df
 
 class Correlation:
-    def __init__(self, folder_path: str):
-        self.folder_path = folder_path
-    
+    def __init__(self, spread_folder_path: str, perp_folder_path: str=None, futures_folder_path: str=None):
+        self.spread_folder_path = spread_folder_path
+        self.perp_folder_path = perp_folder_path
+        self.futures_folder_path = futures_folder_path
+
     def find_cointegration(self, df):
         n = df.shape[1]
         pvalue_matrix = np.ones((n, n))
@@ -64,6 +66,88 @@ class Correlation:
                 if result[1] < 0.05:
                     pairs.append((keys[i], keys[j]))
         return pvalue_matrix, pairs
+
+    def pair_coint(self, all: bool, timeframe: str, *markets):
+        markets = list(markets)
+        df = pd.DataFrame()
+
+        if all:
+            # for name in markets:
+            for perp in os.scandir(self.perp_folder_path):
+                name = perp.path.split('/')[-1].split('-')[0]
+                time_formated_perp = CSVManager(perp.path)
+                perp_file = time_formated_perp.change_resolution(
+                    timeframe, 'PERP')
+                rows = []
+                for fut in os.scandir(self.futures_folder_path):
+                    if fut.path.split('/')[-1].split('-')[0] == name:
+
+                        dates = fut.path.split(
+                            '/')[-1].split('_')[0].split('-')[1]
+
+                        time_formated_fut = CSVManager(fut.path)
+                        fut_file = time_formated_fut.change_resolution(
+                            timeframe, 'FUTURE')
+
+                        perp_file.rename(
+                            columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low', 'close': 'perp_close', 'volume': 'perp_volume'}, inplace=True)
+                        fut_file.rename(
+                            columns={'open': 'fut_open', 'high': 'fut_high', 'low': 'fut_low', 'close': 'fut_close', 'volume': 'fut_volume'}, inplace=True)
+
+                        joint_df = pd.merge(
+                            perp_file, fut_file, how='inner', on=['timestamp'])
+
+                        coint_result = coint(
+                            joint_df['perp_close'], joint_df['fut_close'])
+                        rows.append([coint_result[1], dates])
+
+                    new_df = pd.DataFrame(
+                        rows, columns=[name, 'futures_date'])
+                    new_df.set_index(
+                        'futures_date', drop=True, inplace=True)
+                if len(df) == 0:
+                    df = new_df
+                else:
+                    df = pd.merge(df, new_df, how='outer', on=['futures_date'])
+        else:
+            for name in markets:
+                for perp in os.scandir(self.perp_folder_path):
+                    if perp.path.split('/')[-1].split('-')[0] == name:
+                        time_formated_perp = CSVManager(perp.path)
+                        perp_file = time_formated_perp.change_resolution(
+                            timeframe, 'PERP')
+                        rows = []
+                        for fut in os.scandir(self.futures_folder_path):
+                            if fut.path.split('/')[-1].split('-')[0] == name:
+                                
+                                dates = fut.path.split('/')[-1].split('_')[0].split('-')[1]
+
+                                time_formated_fut = CSVManager(fut.path)
+                                fut_file = time_formated_fut.change_resolution(
+                                    timeframe, 'FUTURE')
+
+                                perp_file.rename(
+                                    columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low', 'close': 'perp_close', 'volume': 'perp_volume'}, inplace=True)
+                                fut_file.rename(
+                                    columns={'open': 'fut_open', 'high': 'fut_high', 'low': 'fut_low', 'close': 'fut_close', 'volume': 'fut_volume'}, inplace=True)
+                                
+                                joint_df = pd.merge(perp_file, fut_file, how='inner', on=['timestamp'])
+
+                                coint_result = coint(joint_df['perp_close'], joint_df['fut_close'])
+                                rows.append([coint_result[1], dates])
+                
+                        new_df = pd.DataFrame(rows, columns=[name, 'futures_date'])
+                        new_df.set_index('futures_date' ,drop=True, inplace=True)
+                if len(df) == 0:
+                    df = new_df
+                else:
+                    df = pd.merge(df, new_df, how='outer', on=['futures_date'])
+            
+        mask = df.isnull()
+        sns.heatmap(df, cmap=cmap, annot=True, fmt=".2f", mask=mask)
+        plt.title('Perp-fut spreads Cointegration')
+        plt.show()
+
 
     def spreads_correlation_heatmap(self, futures_date: str, coint: bool, showing_only_below_threshold: bool=False, annot: bool = False, triangular: bool = False, min_cor: int = -1.0, max_cor: int = 1.0, timeframe: str = '1T'):
 
@@ -80,7 +164,7 @@ class Correlation:
         dates_aggregator_end = {}
         
         # cuz futures might have different starting date, I record all the starting date here and only use the one date that appear the most
-        for fut_data in os.scandir(self.folder_path):
+        for fut_data in os.scaspread_ndir(self.spread_folder_path):
             if fut_data.path.split('/')[-1].split('-')[1].split('_')[0] == futures_date:
                 
                 starting_time = pd.read_csv(fut_data.path)['timestamp'][0]
@@ -101,7 +185,7 @@ class Correlation:
         ending_time = max(dates_aggregator_end.items(),
                           key=operator.itemgetter(1))[0]
         try:
-            for fut_data in os.scandir(self.folder_path):
+            for fut_data in os.scandir(self.spread_folder_path):
 
                 date_in_filename = fut_data.path.split('/')[-1].split('-')[1].split('_')[0]
                 if date_in_filename == futures_date and pd.read_csv(fut_data.path)['timestamp'][0] <= starting_time:
@@ -165,8 +249,9 @@ class Correlation:
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
     
-    def plot_single_spread(self, symbol: str, timeframe: str = '1T', file_type: str='SPREAD'):
-        for ticker in os.scandir(self.folder_path):
+
+    def plot_single_token(self, symbol: str, timeframe: str = '1T', file_type: str='SPREAD'):
+        for ticker in os.scandir(self.spread_folder_path):
             if ticker.path.split('/')[-1].split('_')[0] == symbol:
                 file = CSVManager(ticker.path)
                 file = file.change_resolution(timeframe, file_type)
@@ -186,7 +271,7 @@ class Correlation:
         plt.figure(figsize=(20,15))
 
         count = 1
-        for ticker in os.scandir(self.folder_path):
+        for ticker in os.scandir(self.spread_folder_path):
             if ticker.path.split('/')[-1].split('-')[0] == symbol:
                 spread = CSVManager(ticker.path)
                 spread = spread.change_resolution(timeframe, 'SPREAD')
@@ -204,5 +289,7 @@ class Correlation:
 
 if __name__ == '__main__':
     corr = Correlation(
-        folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
-    corr.plot_historical_spread('BTC', '30T')
+        spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads',
+        perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
+        futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data')
+    corr.pair_coint(True, '4H', 'ETH', 'BTC')
