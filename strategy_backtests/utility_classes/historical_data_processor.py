@@ -565,7 +565,9 @@ class FTXDataProcessor:
         current_perp_futures = self.get_all_perp_tickers()
         for ticker in expired_futures:
             if ticker['underlying'] in current_perp_futures and ticker['name'][4:8] != 'MOVE' and ticker['expiryDescription'] != 'March 2019' and ticker['expiryDescription'] != 'June 2019':
-                expired_futures_arr.append(ticker['name'])
+                name = ticker['name'].split('-')[0]
+                if name not in expired_futures_arr:
+                    expired_futures_arr.append(name)
 
         return expired_futures_arr
     
