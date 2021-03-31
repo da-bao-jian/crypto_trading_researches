@@ -2,6 +2,8 @@
 
 Crypto trading analytic tools
 
+All the API classes used in research Notebooks can be found in the [utility_classes](https://github.com/dabaojian1992/crypto_trading_researches/tree/master/strategy_backtests/utility_classes) folder
+
 [Data Processor API](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/historical_data_processor.py)
 * Now support Deribit and FTX
  * Checkout this [Notebook](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/FTX_spreads.ipynb) to see how to use FTX Dataprocessor API to fetch historical spread data
@@ -16,3 +18,4 @@ Crypto trading analytic tools
 
 [Statistical Arbitrage Research](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/statistical_arb.ipynb)
  * This research finds the tokens on FTX that exibit cointegrated movements between perpetual and futures contracts 
+
