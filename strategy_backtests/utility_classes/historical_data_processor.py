@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime as dt
+from datetime import timedelta
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,6 +18,7 @@ from requests import Request, Session, Response
 import hmac
 import dateutil.parser as dp
 import traceback
+import seaborn as sns
 
 
 
@@ -473,6 +475,44 @@ class FTXDataProcessor:
         res = self.get_all_OHCL(market = market, resolution = resolution, end_time = end_time)
         return res 
 
+    def get_latest_funding_for_perps_with_fut(self, lookback_period: int):
+        perps_with_fut = self.get_all_expired_futures_that_have_perps()
+        perps_with_fut.sort()
+        res=[]
+        tickers = []
+        df = pd.DataFrame()
+
+        for ticker in perps_with_fut:
+            try:
+                response = self._get(f'/funding_rates', {
+                    'end_time': dt.now().timestamp(),
+                    'start_time': (dt.now() - timedelta(hours=lookback_period)).timestamp(),
+                    'future': '{}-PERP'.format(ticker)
+                })
+                tickers.append(ticker)
+                res.append(response)
+            except:
+                pass
+        
+        i=0
+        tickers.append('time')
+        while i < len(res[0]):
+            rows=[]
+            for subarr in res:
+                rows.append(subarr[i]['rate']*10000)
+            rows.append(res[0][i]['time'])
+            new_df = pd.DataFrame([rows], columns=tickers)
+            new_df = new_df.set_index('time')
+            df = df.append(new_df)
+            i+=1
+        fig, ax = plt.subplots(figsize=(30, 5))
+        cmap = sns.diverging_palette(220, 10, as_cmap=True)
+        mask = df.isnull()
+        sns.heatmap(df, cmap=cmap, annot=True, fmt=".2f", mask=mask, ax=ax, annot_kws={"fontsize": 8})
+        plt.title(f'funding rates for the past {lookback_period} hours (/10000)')
+        plt.show()    
+        # return df
+
     def get_historical_funding(self, market: str, path:str, start_time: float = None, end_time: float = None, limit: int=5000):
         try:
             market[-4:] == 'PERP'
@@ -677,6 +717,4 @@ if __name__ == '__main__':
     #     futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
     #     output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
 
-    acc.get_spreads(
-        perp_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps/ETH-PERP_historical_data.csv', 
-        futures_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data/ETH-0925_60_data.csv')
+    acc.get_latest_funding_for_perps_with_fut(3)

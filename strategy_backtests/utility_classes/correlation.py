@@ -111,10 +111,11 @@ class Correlation:
             else:
                 df = pd.merge(df, new_df, how='outer', on=['futures_date'])
 
-        fig, ax = plt.subplots(figsize=(20, 20))
+        fig, ax = plt.subplots(figsize=(30, 5))
         cmap = sns.diverging_palette(220, 10, as_cmap=True)
         mask = df.isnull()
-        sns.heatmap(df, cmap=cmap, annot=True, fmt=".2f", mask=(df >= 0.05))
+        sns.heatmap(df, cmap=cmap, annot=True, fmt=".2f", mask=mask, vmax=0.1,
+                    vmin=0, ax=ax, annot_kws={"fontsize": 8})
         plt.title('Perp-fut spreads Cointegration')
         plt.show()
 
@@ -255,6 +256,7 @@ class Correlation:
                 count += 1
         plt.tight_layout()
         plt.show()
+
 
 
 if __name__ == '__main__':
