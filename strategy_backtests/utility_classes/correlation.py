@@ -10,6 +10,7 @@ import dateutil.parser as dp
 import math
 from datetime import datetime, timedelta
 from statsmodels.tsa.stattools import coint
+import itertools
 
 
 class CSVManager:
@@ -257,11 +258,30 @@ class Correlation:
         plt.tight_layout()
         plt.show()
 
+    def plot_spread_price_distribution(self, symbol: str, timeframe: str = 'H', histogram: bool = True):
+        all_apread_dfs = []
+        futures_date=[]
+        for ticker in os.scandir(self.spread_folder_path):
+            if ticker.path.split('/')[-1].split('-')[0] == symbol:
+                spread = CSVManager(ticker.path)
+                spread = spread.change_resolution(timeframe, 'SPREAD')
+                all_apread_dfs.append(spread)
+                futures_date.append(ticker.path.split('/')[-1].split('_')[0])
+        
+        palette = itertools.cycle(sns.color_palette())
+        sns.set(style='darkgrid')
+        fig, ax = plt.subplots(figsize=(40, 40))
 
+        for i in range(len(all_apread_dfs)):
+            
+            sns.histplot(data=all_apread_dfs[i]['spread_close'],
+                         color=next(palette), kde=histogram)
+        ax.set_xticks(range(-10, 10))
+        plt.show()
 
 if __name__ == '__main__':
     corr = Correlation(
         spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads',
         perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
         futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data')
-    corr.pair_coint(False, '4H', 'ETH', 'BTC')
+    corr.plot_spread_price_distribution('BTC')

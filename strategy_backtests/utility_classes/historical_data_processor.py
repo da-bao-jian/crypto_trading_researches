@@ -21,7 +21,6 @@ import traceback
 import seaborn as sns
 
 
-
 def timestamp_to_unix(year, month, day):
     return dt(year, month, day).timestamp()
 
