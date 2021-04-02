@@ -259,6 +259,7 @@ class Correlation:
         plt.show()
 
     def plot_spread_price_distribution(self, symbol: str, timeframe: str = 'H', histogram: bool = True):
+        
         all_apread_dfs = []
         futures_date=[]
         for ticker in os.scandir(self.spread_folder_path):
