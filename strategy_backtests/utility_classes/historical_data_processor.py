@@ -422,7 +422,6 @@ class FTXDataProcessor:
                     'resolution': resolution,
                     'limit': 5000
                 })
-
                 deduped_candles = [
                     r for r in response if r['time'] not in unix_times]
 
@@ -439,6 +438,7 @@ class FTXDataProcessor:
                             data['funding_rate'] = funding_period['rate']
 
                 results = deduped_candles + results
+                breakpoint()
                 unix_times |= {r['time'] for r in deduped_candles}
                 print(
                     f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
@@ -630,6 +630,52 @@ class FTXDataProcessor:
         for e in errors:
             print(e)
 
+    def get_SPOT_OHCL(self, market: str, resolution: int = 60, start_time: float = None, end_time: float = None, limit: int = 5000):
+        '''
+        {'close': 49483.0, 'high': 49510.0, 'low': 49473.0, 'open': 49475.0, 'startTime': '2021-03-07T05:00:00+00:00', 'time': 1615093200000.0, 'volume': 649052.5699}
+        '''
+        if end_time == None:
+            end_time = time.time()
+
+        if start_time == None:
+            start_time = 1557288000
+
+        unix_times = set()
+        limit = 100
+        results = []
+
+        while True:
+
+            response = self._get(f'markets/{market}/candles', {
+                'end_time': end_time,
+                'start_time': start_time,
+                'resolution': resolution,
+                'limit': 5000
+            })
+            deduped_candles = [
+                r for r in response if r['time'] not in unix_times]
+
+
+            results = deduped_candles + results
+            unix_times |= {r['time'] for r in deduped_candles}
+            print(
+                f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
+            if len(response) == 0:
+                break
+            end_time = min(dt.fromisoformat(t['startTime'])
+                            for t in response).timestamp()
+            if len(response) < limit:
+                break
+
+        df = pd.DataFrame(results)
+        df = df.drop(columns=['time'])
+        df = df.rename(columns={"startTime": "timestamp"})
+        df['next_open'] = df.open.shift(-1)
+
+        return df
+        
+
+
     def write_all_PERPs_OHCL(self, path: str, resolution: int=60):
         all_tickers = []
         response = self._get('futures')
@@ -646,6 +692,25 @@ class FTXDataProcessor:
                 file_path = os.path.join(
                     path, "{}_historical_data.csv".format(ticker))
                 perp_dataframe.to_csv(file_path, index=False)        
+            except:
+                errors.append(traceback.format_exc())
+                pass
+
+        for e in errors:
+            print(e)
+
+    def write_all_SPOTs_OHCL(self, path: str, resolution: int = 60):
+        all_tickers = self.get_all_perp_tickers()
+        
+        errors = []
+
+        for ticker in all_tickers:
+            try:
+                perp_dataframe = self.get_SPOT_OHCL(
+                    market='{}/USD'.format(ticker), resolution=resolution)
+                file_path = os.path.join(
+                    path, "{}_historical_data.csv".format(ticker))
+                perp_dataframe.to_csv(file_path, index=False)
             except:
                 errors.append(traceback.format_exc())
                 pass
@@ -716,4 +781,6 @@ if __name__ == '__main__':
     #     futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data',
     #     output_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads')
 
-    acc.get_latest_funding_for_perps_with_fut(3)
+    acc.write_all_SPOTs_OHCL(
+        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spots')
+
