@@ -37,6 +37,10 @@ class CSVManager:
             resample_dict = {'volume': 'sum', 'open': 'first',
                              'low': 'min', 'high': 'max',
                              'close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
+        elif file_type == 'SPOT':
+            resample_dict = {'volume': 'sum', 'open': 'first',
+                             'low': 'min', 'high': 'max',
+                             'close': 'last', 'timestamp': 'first'}
         elif file_type == 'SPREAD':
             # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
@@ -221,7 +225,6 @@ class Correlation:
         print('spreads from {} to {}'.format(starting_time, ending_time))
         print(f'{token_with_missing_values} have missing values')
     
-
     def plot_single_token(self, symbol: str, timeframe: str = '1T', file_type: str='SPREAD'):
         for ticker in os.scandir(self.spread_folder_path):
             if ticker.path.split('/')[-1].split('_')[0] == symbol:
@@ -236,7 +239,6 @@ class Correlation:
                 elif file_type == 'FUTURE':
                     plt.plot(file['close'])
         plt.show()
-
 
     def plot_historical_spread(self, symbol: str, timeframe: str = '1T', numerical_values: bool=False):
         

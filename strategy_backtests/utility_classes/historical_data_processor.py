@@ -676,6 +676,7 @@ class FTXDataProcessor:
         
 
 
+
     def write_all_PERPs_OHCL(self, path: str, resolution: int=60):
         all_tickers = []
         response = self._get('futures')
