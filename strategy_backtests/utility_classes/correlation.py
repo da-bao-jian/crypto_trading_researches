@@ -19,7 +19,7 @@ class CSVManager:
 
         self.data = pd.read_csv(csv_path, parse_dates=[
                                 'timestamp'], index_col='timestamp')
-        self.data.dropna(inplace=True)
+        self.data=self.data.fillna(method='ffill')
         self.data.index.name = 'Starting time'
         self.data['timestamp'] = [i.isoformat()
                                   for i in self.data.index.to_pydatetime()]
@@ -55,10 +55,12 @@ class CSVManager:
         return self.df
 
 class Correlation:
-    def __init__(self, spread_folder_path: str, perp_folder_path: str=None, futures_folder_path: str=None):
+    def __init__(self, spread_folder_path: str=None, perp_folder_path: str=None, futures_folder_path: str=None, spot_folder_path:str=None):
         self.spread_folder_path = spread_folder_path
         self.perp_folder_path = perp_folder_path
         self.futures_folder_path = futures_folder_path
+        self.spot_folder_path = spot_folder_path
+
 
     def find_cointegration(self, df):
         n = df.shape[1]
@@ -282,9 +284,81 @@ class Correlation:
         ax.set_xticks(range(-10, 10))
         plt.show()
 
+    def rank_vol(self, resolution, spread_OHLC: str = 'spread_close%', lookback_period: int = 1000):
+        '''
+        take two file path and find matching token to calculate the spread
+        '''
+        tokens = []
+        std_arr=[]
+        top_ten={}
+        df = pd.DataFrame()
+        for perp in os.scandir(self.perp_folder_path):
+            token_name = perp.path.split('/')[-1].split('-')[0]
+            for spot in os.scandir(self.spot_folder_path):
+                spot_name = spot.path.split(
+                    '/')[-1].split('-')[0].split('_')[0]
+
+                if spot_name == token_name and spot_name not in tokens:
+                    tokens.append(spot_name)
+
+                    df_spot = CSVManager(spot).change_resolution(
+                        resolution, 'SPOT')
+                    df_perp = CSVManager(perp).change_resolution(
+                        resolution, 'PERP')
+
+                    df_perp.rename(columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low',
+                                            'close': 'perp_close', 'volume': 'perp_volume'}, inplace=True)
+                    df_spot.rename(columns={'open': 'spot_open', 'high': 'spot_high', 'low': 'spot_low',
+                                            'close': 'spot_close', 'volume': 'spot_volume'}, inplace=True)
+
+                    joint_df = pd.merge(
+                        df_perp, df_spot, how='inner', on=['timestamp'])
+
+                    if spread_OHLC == 'spread_open%':
+                        joint_df['spread_open'] = joint_df['perp_open'] - \
+                            joint_df['spot_open']
+                        joint_df['spread_open%'] = (
+                            joint_df['perp_open'] - joint_df['spot_open'])/joint_df['perp_open']*100
+                    elif spread_OHLC == 'spread_high%':
+                        joint_df['spread_high'] = joint_df['perp_high'] - \
+                            joint_df['spot_high']
+                        joint_df['spread_high%'] = (
+                            joint_df['perp_high'] - joint_df['spot_high'])/joint_df['perp_high']*100
+                    elif spread_OHLC == 'spread_low%':
+                        joint_df['spread_low'] = joint_df['perp_low'] - \
+                            joint_df['spot_low']
+                        joint_df['spread_low%'] = (
+                            joint_df['perp_low'] - joint_df['spot_low'])/joint_df['perp_low']*100
+                    elif spread_OHLC == 'spread_close%':
+                        joint_df['spread_close'] = joint_df['perp_close'] - \
+                            joint_df['spot_close']
+                        joint_df['spread_close%'] = (
+                            joint_df['perp_close'] - joint_df['spot_close'])/joint_df['perp_close']*100
+
+                    joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
+                                        'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
+                    # joint_df=joint_df.set_index('timestamp')
+                    volatility = joint_df[spread_OHLC].tail(lookback_period).std()
+                    std_arr.append(volatility)
+                    top_ten[spot_name] = volatility
+        
+
+        fig, ax = plt.subplots(figsize=(15, 10))
+
+        sort_orders = sorted(top_ten.items(), key=lambda x: x[1], reverse=True)
+        # df = pd.DataFrame([std_arr], columns=tokens)
+        # breakpoint()
+        # col = list(df.columns[1:])
+        # std = df.values.tolist()[0]
+        # df.dropna()
+        top_ten_tokens = [t[0] for t in sort_orders[:10]]
+        top_ten_vol = [t[1] for t in sort_orders[:10]]
+        # breakpoint()
+        ax.bar(top_ten_tokens, top_ten_vol)
+
+        
+
 if __name__ == '__main__':
-    corr = Correlation(
-        spread_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spreads',
-        perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
-        futures_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/expired_futures_data')
-    corr.plot_spread_price_distribution('BTC')
+    corr = Correlation(perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
+                       spot_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spots')
+    corr.rank_vol('4H')
