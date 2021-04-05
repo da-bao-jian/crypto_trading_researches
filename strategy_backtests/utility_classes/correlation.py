@@ -357,13 +357,11 @@ class Correlation:
                         joint_df = pd.merge(
                             df_perp, df_spot, how='inner', on=['timestamp'])
 
-                        joint_df['spread'] = joint_df['spread'].fillna(
-                            joint_df['spread'].tail(lookback_period).mean())
-
-
-
                         joint_df['spread'] = (
                             joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
+
+                        joint_df['spread'] = joint_df['spread'].fillna(
+                            joint_df['spread'].tail(lookback_period).mean())
 
                         joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
                                                'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
