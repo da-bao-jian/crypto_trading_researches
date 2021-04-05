@@ -7,7 +7,7 @@ All the API classes used in research Notebooks are stored in the [utility_classe
 [Data Processor API](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/historical_data_processor.py)
 * Now support Deribit and FTX
  * Checkout this [Notebook](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/FTX_spreads.ipynb) to see how to use FTX Dataprocessor API to fetch historical spread data
-* To get FTX historical perp, expired futures and spread OHLC data all at once, simple change the output file path and select 'run all cells' in [this](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/FTX_spreads_fetching.ipynb) Notebook
+* To get FTX historical perp, expired futures and spread OHLC data all at once, simply change the output file path and select 'run all cells' in [this](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/FTX_spreads_fetching.ipynb) Notebook
 
 [Sample Strategies](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/utility_classes/strategy.py)
 * [Backtest Runner](https://github.com/dabaojian1992/crypto_trading_researches/blob/master/strategy_backtests/backtest_runner.ipynb)
