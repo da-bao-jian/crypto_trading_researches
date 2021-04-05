@@ -34,14 +34,6 @@ class CSVManager:
             raise ValueError(
                 'Only T(minute) and H(hour) timeframes are supported')
 
-        # if file_type == 'PERP':
-        #     resample_dict = {'volume': 'sum', 'open': 'first',
-        #                      'low': 'min', 'high': 'max',
-        #                      'close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
-        # elif file_type == 'SPOT':
-        #     resample_dict = {'volume': 'sum', 'open': 'first',
-        #                      'low': 'min', 'high': 'max',
-        #                      'close': 'last', 'timestamp': 'first'}
         if file_type == 'SPREAD':
             # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
@@ -49,15 +41,11 @@ class CSVManager:
                              'spread_close': 'last', 'spread_close_numerical': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
             self.df = self.data.resample(timeframe).agg(resample_dict)
 
-        # elif file_type == 'FUTURE':
-        #     resample_dict = {'volume': 'sum', 'open': 'first',
-        #                      'low': 'min', 'high': 'max',
-        #                      'close': 'last', 'timestamp': 'first'}
         else: 
             self.data['ave_price'] = (self.data['open'] + self.data['low']+self.data['high']+self.data['close'])/4
             self.data['vwap'] = self.data['ave_price']*self.data['volume']
 
-            def f(x):
+            def restructured(x):
                 if len(x) != 0:
                     resample_dict = {}
                     resample_dict['volume'] = x['volume'].sum()
@@ -67,13 +55,13 @@ class CSVManager:
                     resample_dict['close'] = x['close'].iloc[-1]
                     resample_dict['timestamp'] = x['timestamp'].iloc[0]
                     if resample_dict['volume'] == 0:
-                        resample_dict['vwap']=0
+                        resample_dict['vwap']=None
                     else:
                         resample_dict['vwap'] = (x['vwap'].sum())/resample_dict['volume']
                     return pd.Series(resample_dict, index=['volume', 'open', 'low', 'high', 'close', 'vwap', 'timestamp'])
             
-            self.df = self.data.resample(timeframe).apply(f)
-
+            self.df = self.data.resample(timeframe).apply(restructured)
+            # self.df['vwap'] = self.df['vwap'].fillna(self.df['vwap'].mean())
         return self.df
 
 class Correlation:
@@ -306,7 +294,7 @@ class Correlation:
         ax.set_xticks(range(-10, 10))
         plt.show()
 
-    def rank_vol(self, resolution, lookback_period: int = 1000, filtered: bool=True):
+    def rank_vol(self, resolution, filter_list = None, lookback_period: int = 1000):
         '''
         take two file path and find matching token to calculate the spread
         '''
@@ -319,39 +307,77 @@ class Correlation:
             for spot in os.scandir(self.spot_folder_path):
                 spot_name = spot.path.split(
                     '/')[-1].split('-')[0].split('_')[0]
+                if filter_list != None:
+                    if spot_name == token_name and spot_name not in tokens and spot_name in filter_list:
+                        tokens.append(spot_name)
 
-                if spot_name == token_name and spot_name not in tokens:
-                    tokens.append(spot_name)
+                        df_spot = CSVManager(spot).change_resolution(
+                            resolution, 'SPOT')
+                        df_perp = CSVManager(perp).change_resolution(
+                            resolution, 'PERP')
+                        
+                        df_perp.rename(columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low',
+                                                'close': 'perp_close', 'volume': 'perp_volume', 'vwap': 'perp_vwap'}, inplace=True)
+                        df_spot.rename(columns={'open': 'spot_open', 'high': 'spot_high', 'low': 'spot_low',
+                                                'close': 'spot_close', 'volume': 'spot_volume', 'vwap': 'spot_vwap'}, inplace=True)
 
-                    df_spot = CSVManager(spot).change_resolution(
-                        resolution, 'SPOT')
-                    df_perp = CSVManager(perp).change_resolution(
-                        resolution, 'PERP')
-                    
-                    df_perp.rename(columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low',
-                                            'close': 'perp_close', 'volume': 'perp_volume', 'vwap': 'perp_vwap'}, inplace=True)
-                    df_spot.rename(columns={'open': 'spot_open', 'high': 'spot_high', 'low': 'spot_low',
-                                            'close': 'spot_close', 'volume': 'spot_volume', 'vwap': 'spot_vwap'}, inplace=True)
+                        joint_df = pd.merge(
+                            df_perp, df_spot, how='inner', on=['timestamp'])
+                        
 
-                    joint_df = pd.merge(
-                        df_perp, df_spot, how='inner', on=['timestamp'])
+                        joint_df['spread'] = (
+                            joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
+                        
+                        joint_df['spread'] = joint_df['spread'].fillna(
+                            joint_df['spread'].tail(lookback_period).mean())
 
-                    joint_df['spread'] = (
-                        joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
-                    
-                    joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
-                                        'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
-                    # joint_df=joint_df.set_index('timestamp')
-                    volatility = joint_df['spread'].tail(lookback_period).std()
-                    std_arr.append(volatility)
-                    top_ten[spot_name] = volatility
-        
+                        joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
+                                            'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
+                        # joint_df=joint_df.set_index('timestamp')
+                        volatility = joint_df['spread'].tail(
+                            lookback_period).std()
+                        std_arr.append(volatility)
+                        top_ten[spot_name] = volatility
+                else: 
+                    if spot_name == token_name and spot_name not in tokens:
+                        tokens.append(spot_name)
+
+                        df_spot = CSVManager(spot).change_resolution(
+                            resolution, 'SPOT').tail(
+                            lookback_period)
+                        df_perp = CSVManager(perp).change_resolution(
+                            resolution, 'PERP').tail(
+                            lookback_period)
+
+                        df_perp.rename(columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low',
+                                                'close': 'perp_close', 'volume': 'perp_volume', 'vwap': 'perp_vwap'}, inplace=True)
+                        df_spot.rename(columns={'open': 'spot_open', 'high': 'spot_high', 'low': 'spot_low',
+                                                'close': 'spot_close', 'volume': 'spot_volume', 'vwap': 'spot_vwap'}, inplace=True)
+
+                        joint_df = pd.merge(
+                            df_perp, df_spot, how='inner', on=['timestamp'])
+
+                        joint_df['spread'] = joint_df['spread'].fillna(
+                            joint_df['spread'].tail(lookback_period).mean())
+
+
+
+                        joint_df['spread'] = (
+                            joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
+
+                        joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
+                                               'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
+                        # joint_df=joint_df.set_index('timestamp')
+                        volatility = joint_df['spread'].tail(
+                            lookback_period).std()
+                        std_arr.append(volatility)
+                        top_ten[spot_name] = volatility
 
         fig, ax = plt.subplots(figsize=(15, 10))
 
         sort_orders = sorted(top_ten.items(), key=lambda x: x[1], reverse=True)
-        top_ten_tokens = [t[0] for t in sort_orders[:20]]
-        top_ten_vol = [t[1] for t in sort_orders[:20]]
+        top_ten_tokens = [t[0] for t in sort_orders[:10]]
+        top_ten_vol = [t[1] for t in sort_orders[:10]]
         ax.bar(top_ten_tokens, top_ten_vol)
 
         
@@ -359,4 +385,7 @@ class Correlation:
 if __name__ == '__main__':
     corr = Correlation(perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
                        spot_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spots')
-    corr.rank_vol('5T')
+    df = pd.read_csv(
+        '/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/token_borrow_rate.csv')
+    token_list = df['coin'].to_list()
+    corr.rank_vol('5T', filter_list=token_list)
