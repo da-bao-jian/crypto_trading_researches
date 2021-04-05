@@ -23,6 +23,7 @@ class CSVManager:
         self.data.index.name = 'Starting time'
         self.data['timestamp'] = [i.isoformat()
                                   for i in self.data.index.to_pydatetime()]
+        
         self.df = self.data.copy()
 
     def change_resolution(self, timeframe: str, file_type: str):
@@ -33,25 +34,46 @@ class CSVManager:
             raise ValueError(
                 'Only T(minute) and H(hour) timeframes are supported')
 
-        if file_type == 'PERP':
-            resample_dict = {'volume': 'sum', 'open': 'first',
-                             'low': 'min', 'high': 'max',
-                             'close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
-        elif file_type == 'SPOT':
-            resample_dict = {'volume': 'sum', 'open': 'first',
-                             'low': 'min', 'high': 'max',
-                             'close': 'last', 'timestamp': 'first'}
-        elif file_type == 'SPREAD':
+        # if file_type == 'PERP':
+        #     resample_dict = {'volume': 'sum', 'open': 'first',
+        #                      'low': 'min', 'high': 'max',
+        #                      'close': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
+        # elif file_type == 'SPOT':
+        #     resample_dict = {'volume': 'sum', 'open': 'first',
+        #                      'low': 'min', 'high': 'max',
+        #                      'close': 'last', 'timestamp': 'first'}
+        if file_type == 'SPREAD':
             # timestamp,perp_volume,funding_rate,fut_volume,spread_open,spread_high,spread_low,spread_close
             resample_dict = {'perp_volume': 'sum', 'fut_volume': 'sum', 'spread_open': 'first',
                              'spread_low': 'min', 'spread_high': 'max',
                              'spread_close': 'last', 'spread_close_numerical': 'last', 'funding_rate': 'mean', 'timestamp': 'first'}
-        elif file_type == 'FUTURE':
-            resample_dict = {'volume': 'sum', 'open': 'first',
-                             'low': 'min', 'high': 'max',
-                             'close': 'last', 'timestamp': 'first'}
-        self.df = self.data.resample(timeframe).agg(resample_dict)
-        # self.timeframe = new_timeframe
+            self.df = self.data.resample(timeframe).agg(resample_dict)
+
+        # elif file_type == 'FUTURE':
+        #     resample_dict = {'volume': 'sum', 'open': 'first',
+        #                      'low': 'min', 'high': 'max',
+        #                      'close': 'last', 'timestamp': 'first'}
+        else: 
+            self.data['ave_price'] = (self.data['open'] + self.data['low']+self.data['high']+self.data['close'])/4
+            self.data['vwap'] = self.data['ave_price']*self.data['volume']
+
+            def f(x):
+                if len(x) != 0:
+                    resample_dict = {}
+                    resample_dict['volume'] = x['volume'].sum()
+                    resample_dict['open'] = x['open'].iloc[0]
+                    resample_dict['low'] = x['low'].min()
+                    resample_dict['high'] = x['high'].max()
+                    resample_dict['close'] = x['close'].iloc[-1]
+                    resample_dict['timestamp'] = x['timestamp'].iloc[0]
+                    if resample_dict['volume'] == 0:
+                        resample_dict['vwap']=0
+                    else:
+                        resample_dict['vwap'] = (x['vwap'].sum())/resample_dict['volume']
+                    return pd.Series(resample_dict, index=['volume', 'open', 'low', 'high', 'close', 'vwap', 'timestamp'])
+            
+            self.df = self.data.resample(timeframe).apply(f)
+
         return self.df
 
 class Correlation:
@@ -284,7 +306,7 @@ class Correlation:
         ax.set_xticks(range(-10, 10))
         plt.show()
 
-    def rank_vol(self, resolution, spread_OHLC: str = 'spread_close%', lookback_period: int = 1000):
+    def rank_vol(self, resolution, lookback_period: int = 1000, filtered: bool=True):
         '''
         take two file path and find matching token to calculate the spread
         '''
@@ -305,40 +327,22 @@ class Correlation:
                         resolution, 'SPOT')
                     df_perp = CSVManager(perp).change_resolution(
                         resolution, 'PERP')
-
+                    
                     df_perp.rename(columns={'open': 'perp_open', 'high': 'perp_high', 'low': 'perp_low',
-                                            'close': 'perp_close', 'volume': 'perp_volume'}, inplace=True)
+                                            'close': 'perp_close', 'volume': 'perp_volume', 'vwap': 'perp_vwap'}, inplace=True)
                     df_spot.rename(columns={'open': 'spot_open', 'high': 'spot_high', 'low': 'spot_low',
-                                            'close': 'spot_close', 'volume': 'spot_volume'}, inplace=True)
+                                            'close': 'spot_close', 'volume': 'spot_volume', 'vwap': 'spot_vwap'}, inplace=True)
 
                     joint_df = pd.merge(
                         df_perp, df_spot, how='inner', on=['timestamp'])
 
-                    if spread_OHLC == 'spread_open%':
-                        joint_df['spread_open'] = joint_df['perp_open'] - \
-                            joint_df['spot_open']
-                        joint_df['spread_open%'] = (
-                            joint_df['perp_open'] - joint_df['spot_open'])/joint_df['perp_open']*100
-                    elif spread_OHLC == 'spread_high%':
-                        joint_df['spread_high'] = joint_df['perp_high'] - \
-                            joint_df['spot_high']
-                        joint_df['spread_high%'] = (
-                            joint_df['perp_high'] - joint_df['spot_high'])/joint_df['perp_high']*100
-                    elif spread_OHLC == 'spread_low%':
-                        joint_df['spread_low'] = joint_df['perp_low'] - \
-                            joint_df['spot_low']
-                        joint_df['spread_low%'] = (
-                            joint_df['perp_low'] - joint_df['spot_low'])/joint_df['perp_low']*100
-                    elif spread_OHLC == 'spread_close%':
-                        joint_df['spread_close'] = joint_df['perp_close'] - \
-                            joint_df['spot_close']
-                        joint_df['spread_close%'] = (
-                            joint_df['perp_close'] - joint_df['spot_close'])/joint_df['perp_close']*100
-
+                    joint_df['spread'] = (
+                        joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
+                    
                     joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
                                         'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
                     # joint_df=joint_df.set_index('timestamp')
-                    volatility = joint_df[spread_OHLC].tail(lookback_period).std()
+                    volatility = joint_df['spread'].tail(lookback_period).std()
                     std_arr.append(volatility)
                     top_ten[spot_name] = volatility
         
@@ -346,14 +350,8 @@ class Correlation:
         fig, ax = plt.subplots(figsize=(15, 10))
 
         sort_orders = sorted(top_ten.items(), key=lambda x: x[1], reverse=True)
-        # df = pd.DataFrame([std_arr], columns=tokens)
-        # breakpoint()
-        # col = list(df.columns[1:])
-        # std = df.values.tolist()[0]
-        # df.dropna()
-        top_ten_tokens = [t[0] for t in sort_orders[:10]]
-        top_ten_vol = [t[1] for t in sort_orders[:10]]
-        # breakpoint()
+        top_ten_tokens = [t[0] for t in sort_orders[:20]]
+        top_ten_vol = [t[1] for t in sort_orders[:20]]
         ax.bar(top_ten_tokens, top_ten_vol)
 
         
@@ -361,4 +359,4 @@ class Correlation:
 if __name__ == '__main__':
     corr = Correlation(perp_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_perps',
                        spot_folder_path='/home/harry/trading_algo/crypto_trading_researches/strategy_backtests/historical_data/all_spots')
-    corr.rank_vol('4H')
+    corr.rank_vol('5T')
