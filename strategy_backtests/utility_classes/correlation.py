@@ -152,7 +152,7 @@ class Correlation:
         dates_aggregator_end = {}
         
         # cuz futures might have different starting date, I record all the starting date here and only use the one date that appear the most
-        for fut_data in os.scaspread_ndir(self.spread_folder_path):
+        for fut_data in os.scandir(self.spread_folder_path):
             if fut_data.path.split('/')[-1].split('-')[1].split('_')[0] == futures_date:
                 
                 starting_time = pd.read_csv(fut_data.path)['timestamp'][0]
