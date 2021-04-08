@@ -438,7 +438,6 @@ class FTXDataProcessor:
                             data['funding_rate'] = funding_period['rate']
 
                 results = deduped_candles + results
-                breakpoint()
                 unix_times |= {r['time'] for r in deduped_candles}
                 print(
                     f'Adding {len(response)} candles with start time {dt.fromtimestamp(int(end_time))}')
