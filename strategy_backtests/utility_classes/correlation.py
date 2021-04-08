@@ -294,12 +294,12 @@ class Correlation:
         ax.set_xticks(range(-10, 10))
         plt.show()
 
-    def rank_vol(self, resolution, filter_list = None, lookback_period: int = 1000):
+    def rank_vol(self, resolution, filter_list = None, lookback_period: int = 1000, use_return: bool=False):
         '''
         take two file path and find matching token to calculate the spread
         '''
         tokens = []
-        std_arr=[]
+        # std_arr=[]
         top_ten={}
         df = pd.DataFrame()
         for perp in os.scandir(self.perp_folder_path):
@@ -328,16 +328,22 @@ class Correlation:
                         joint_df['spread'] = (
                             joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
                         
-                        joint_df['spread'] = joint_df['spread'].fillna(
-                            joint_df['spread'].tail(lookback_period).mean())
+                        # joint_df['spread'] = joint_df['spread'].fillna(
+                        #     joint_df['spread'].tail(lookback_period).mean())
 
                         joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
                                             'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
                         # joint_df=joint_df.set_index('timestamp')
-                        volatility = joint_df['spread'].tail(
-                            lookback_period).std()
-                        std_arr.append(volatility)
+                        if use_return == True:
+                            joint_df['spread_return'] = (joint_df['spread']-joint_df['spread'].shift(-1))/joint_df['spread'].shift(-1)
+                            volatility = np.std(joint_df['spread_return'].tail(lookback_period))
+                        else:
+                            volatility = np.std(
+                                joint_df['spread'].tail(lookback_period))
+
+                        # std_arr.append(volatility)
                         top_ten[spot_name] = volatility
+
                 else: 
                     if spot_name == token_name and spot_name not in tokens:
                         tokens.append(spot_name)
@@ -360,15 +366,22 @@ class Correlation:
                         joint_df['spread'] = (
                             joint_df['perp_vwap'] - joint_df['spot_vwap'])/joint_df['perp_vwap']*100
 
-                        joint_df['spread'] = joint_df['spread'].fillna(
-                            joint_df['spread'].tail(lookback_period).mean())
+                        # joint_df['spread'] = joint_df['spread'].fillna(
+                        #     joint_df['spread'].tail(lookback_period).mean())
 
                         joint_df.drop(columns=['perp_open', 'spot_open', 'perp_high', 'spot_high',
                                                'perp_low', 'spot_low', 'perp_close', 'spot_close'], inplace=True)
                         # joint_df=joint_df.set_index('timestamp')
-                        volatility = joint_df['spread'].tail(
-                            lookback_period).std()
-                        std_arr.append(volatility)
+                        if use_return == True:
+                            joint_df['spread_return'] = (
+                                joint_df['spread']-joint_df['spread'].shift(-1))/joint_df['spread'].shift(-1)
+                            volatility = np.std(
+                                joint_df['spread_return'].tail(lookback_period))
+                        else:
+                            volatility = np.std(
+                                joint_df['spread'].tail(lookback_period))
+
+                        # std_arr.append(volatility)
                         top_ten[spot_name] = volatility
 
         fig, ax = plt.subplots(figsize=(15, 10))
@@ -377,6 +390,7 @@ class Correlation:
         top_ten_tokens = [t[0] for t in sort_orders[:10]]
         top_ten_vol = [t[1] for t in sort_orders[:10]]
         ax.bar(top_ten_tokens, top_ten_vol)
+        return sort_orders
 
         
 
