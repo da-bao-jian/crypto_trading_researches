@@ -3,4 +3,5 @@ binance_tester/key.py
 data
 strategy_backtests/utility_classes/keys.py
 strategy_backtests/historical_data
+*.pyc
 *.csv
